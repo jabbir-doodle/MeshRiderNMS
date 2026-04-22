@@ -35,7 +35,7 @@ import { useNMSStore, type NMSView } from '@/lib/nms-data/store'
 import { ConnectionStatus } from './connection-status'
 
 const VIEW_LABELS: Record<NMSView, string> = {
-  fleet: 'Fleet Dashboard',
+  fleet: 'Mesh Rider Dashboard',
   topology: 'Network Topology',
   radio: 'Radio Detail',
   ota: 'OTA Campaigns',
@@ -48,7 +48,7 @@ const VIEW_LABELS: Record<NMSView, string> = {
 const VIEW_BREADCRUMB_PARENTS: Record<NMSView, { label: string; view: NMSView } | null> = {
   fleet: null,
   topology: null,
-  radio: { label: 'Fleet', view: 'fleet' },
+  radio: { label: 'Dashboard', view: 'fleet' },
   ota: null,
   spectrum: null,
   alerts: null,
@@ -93,6 +93,8 @@ export function NMSTopbar() {
   const { currentView, selectedTenant, selectedRadioId, alertCount, setView, selectRadio } =
     useNMSStore()
 
+  const [searchFocused, setSearchFocused] = useState(false)
+
   const breadcrumbItems = useMemo(() => {
     const items: { label: string; view?: NMSView; isCurrent?: boolean }[] = []
 
@@ -121,7 +123,15 @@ export function NMSTopbar() {
   }
 
   return (
-    <header className="flex items-center h-14 px-4 bg-[#0b0f16] border-b border-[#1a2230] gap-4 flex-shrink-0">
+    <header className="relative flex items-center h-14 px-4 bg-[#0b0f16] border-b border-[#1a2230] gap-4 flex-shrink-0">
+      {/* Bottom gradient line (amber glow) */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-px"
+        style={{
+          background: 'linear-gradient(90deg, transparent 0%, #f4a41733 20%, #f4a41766 50%, #f4a41733 80%, transparent 100%)',
+        }}
+      />
+
       {/* Breadcrumb */}
       <Breadcrumb className="flex-shrink-0">
         <BreadcrumbList>
@@ -158,12 +168,31 @@ export function NMSTopbar() {
       <ConnectionStatus />
 
       {/* Search */}
-      <div className="relative hidden md:flex items-center w-64 lg:w-80">
-        <Search className="absolute left-3 h-4 w-4 text-[#4a5567]" />
+      <div className={cn(
+        'relative hidden md:flex items-center w-64 lg:w-80 transition-all duration-200 rounded-md',
+        searchFocused && 'ring-1',
+      )}
+        style={{
+          ringColor: searchFocused ? 'rgba(244, 164, 23, 0.3)' : undefined,
+          boxShadow: searchFocused
+            ? '0 0 0 2px rgba(244, 164, 23, 0.2), 0 0 20px rgba(244, 164, 23, 0.06)'
+            : 'none',
+        }}
+      >
+        <Search
+          className="absolute left-3 h-4 w-4 transition-colors duration-200"
+          style={{ color: searchFocused ? '#f4a417' : '#4a5567' }}
+        />
         <Input
           type="text"
           placeholder="Search radios, IPs, callsigns..."
-          className="pl-9 pr-4 h-8 text-xs bg-[#11161f] border-[#222b39] text-[#aeb8c8] placeholder:text-[#4a5567] rounded-md focus-visible:ring-[#f4a417]/30 focus-visible:border-[#f4a417]/50 font-mono"
+          className="pl-9 pr-4 h-8 text-xs bg-[#11161f] text-[#aeb8c8] placeholder:text-[#4a5567] rounded-md font-mono transition-colors duration-200"
+          style={{
+            borderColor: searchFocused ? 'rgba(244, 164, 23, 0.5)' : '#222b39',
+            boxShadow: 'none',
+          }}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
         />
       </div>
 
@@ -183,7 +212,7 @@ export function NMSTopbar() {
       >
         <Bell className="h-4 w-4" />
         {alertCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center h-4 w-4 rounded-full bg-[#ff5470] text-[10px] font-mono font-bold text-white">
+          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center h-4 w-4 rounded-full bg-[#ff5470] text-[10px] font-mono font-bold text-white animate-badge-bounce">
             {alertCount}
           </span>
         )}
@@ -192,13 +221,13 @@ export function NMSTopbar() {
       {/* User Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2 rounded-md p-1 hover:bg-[#161c27] transition-colors cursor-pointer">
-            <Avatar className="h-7 w-7">
+          <button className="flex items-center gap-2 rounded-md p-1 hover:bg-[#161c27] transition-all duration-200 cursor-pointer hover-ring">
+            <Avatar className="h-7 w-7 ring-1 ring-transparent hover:ring-[#f4a41733] transition-all duration-200">
               <AvatarFallback className="bg-[#f4a417]/15 text-[#f4a417] text-[10px] font-mono font-bold border border-[#f4a417]/20">
-                OP
+                JB
               </AvatarFallback>
             </Avatar>
-            <span className="hidden lg:block text-xs font-medium text-[#aeb8c8]">Operator</span>
+            <span className="hidden lg:block text-xs font-medium text-[#aeb8c8]">Jabbir</span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -206,7 +235,7 @@ export function NMSTopbar() {
           className="w-48 bg-[#161c27] border-[#2c3647] text-[#aeb8c8]"
         >
           <DropdownMenuLabel className="text-[#e7ecf4] text-xs font-mono">
-            operator@doodlelabs.com
+            jabbir@doodlelabs.com
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-[#222b39]" />
           <DropdownMenuGroup>

@@ -13,7 +13,7 @@ import AuditView from './views/audit-view'
 import AccessView from './views/access-view'
 
 /**
- * NMSShell — Main entry component for the Mesh Rider Fleet NMS.
+ * NMSShell — Main entry component for the Doodle Labs Mesh Rider NMS.
  * Renders the layout shell and conditionally renders the correct
  * view component based on the active store view.
  */

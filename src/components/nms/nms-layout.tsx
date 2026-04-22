@@ -7,7 +7,7 @@ import { NMSSidebar } from './nms-sidebar'
 import { NMSTopbar } from './nms-topbar'
 
 const VIEW_PLACEHOLDER_TITLES: Record<NMSView, string> = {
-  fleet: 'Fleet Dashboard',
+  fleet: 'Mesh Rider Dashboard',
   topology: 'Network Topology',
   radio: 'Radio Detail',
   ota: 'OTA Campaigns',
@@ -18,7 +18,7 @@ const VIEW_PLACEHOLDER_TITLES: Record<NMSView, string> = {
 }
 
 const VIEW_PLACEHOLDER_DESCRIPTIONS: Record<NMSView, string> = {
-  fleet: 'Real-time fleet overview with KPI metrics, radio status table, and mesh health indicators.',
+  fleet: 'Real-time Mesh Rider fleet overview with KPI metrics, radio status table, and mesh health indicators.',
   topology: 'Interactive mesh network graph showing node connections, signal strength, and link quality.',
   radio: 'Individual radio configuration, performance metrics, neighbor table, and diagnostics.',
   ota: 'Staged firmware rollout management with campaign scheduling, progress tracking, and rollback.',

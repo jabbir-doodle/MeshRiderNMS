@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mesh Rider Fleet NMS — Doodle Labs",
+  title: "Mesh Rider NMS — Doodle Labs",
   description: "Cloud-Native Network Management Platform for the Mesh Rider Radio Ecosystem. Real-time fleet monitoring, OTA management, spectrum intelligence, and AI-powered analytics.",
   keywords: ["NMS", "Doodle Labs", "Mesh Rider", "Fleet Management", "Network Management", "Tactical Radio", "Mesh Network"],
   icons: {

@@ -165,9 +165,9 @@ const siteMeta = [
 
 const formFactors: RadioFormFactor[] = ['Nano²', 'Mini', 'OEM', 'Boost', 'Wearable'];
 const bands: RadioBand[] = ['L-Band', 'S-Band', 'C-Band', 'L+S Band', 'L+S+C Band'];
-const firmwareVersions = ['v4.2.1-stable', 'v4.2.0-stable', 'v4.1.8-stable', 'v4.3.0-rc1', 'v4.1.5-stable'];
-const agentVersions = ['2.8.1', '2.8.0', '2.7.4', '2.9.0-rc1', '2.7.3'];
-const configTemplates = ['mesh-default-v3', 'mesh-high-gain-v2', 'mesh-low-power-v1', 'mesh-backbone-v2', 'mesh-edge-v1'];
+const firmwareVersions = ['MR-OS v7.2.1', 'MR-OS v7.2.0', 'MR-OS v7.1.8', 'MR-OS v7.3.0-rc1', 'MR-OS v7.1.5'];
+const agentVersions = ['3.8.1', '3.8.0', '3.7.4', '3.9.0-rc1', '3.7.3'];
+const configTemplates = ['meshrider-default-v3', 'meshrider-high-gain-v2', 'meshrider-low-power-v1', 'meshrider-backbone-v2', 'meshrider-edge-v1'];
 const states: RadioState[] = ['online', 'online', 'online', 'online', 'online', 'online', 'online', 'online', 'degraded', 'degraded', 'offline', 'error'];
 
 function randomPick<T>(arr: readonly T[]): T {
@@ -330,8 +330,8 @@ export const tenants: Tenant[] = [
 export const operators: Operator[] = [
   {
     id: 'op-001',
-    name: 'Marcus Chen',
-    email: 'marcus.chen@acme-industrial.com',
+    name: 'Jabbir',
+    email: 'jabbir@doodlelabs.com',
     role: 'Super Admin',
     scope: 'Global',
     mfa: 'TOTP',
@@ -423,20 +423,20 @@ export const operators: Operator[] = [
 export const otaCampaigns: OTACampaign[] = [
   {
     id: 'ota-001',
-    name: 'Firmware v4.3.0 Staged Rollout',
-    firmware: 'v4.3.0-rc1',
+    name: 'Mesh Rider OS v7.3.0 Staged Rollout',
+    firmware: 'MR-OS v7.3.0-rc1',
     status: 'active',
     total: 18,
     completed: 12,
     failed: 1,
-    owner: 'Marcus Chen',
+    owner: 'Jabbir',
     createdAt: relativeTime(180),
     stage: 'stage50',
   },
   {
     id: 'ota-002',
-    name: 'Agent v2.9.0 Canary Test',
-    firmware: 'v2.9.0-rc1',
+    name: 'Agent v3.9.0 Canary Test',
+    firmware: 'v3.9.0-rc1',
     status: 'active',
     total: 24,
     completed: 2,
@@ -447,8 +447,8 @@ export const otaCampaigns: OTACampaign[] = [
   },
   {
     id: 'ota-003',
-    name: 'Security Patch v4.2.1-hotfix',
-    firmware: 'v4.2.1-stable',
+    name: 'Security Patch MR-OS v7.2.1-hotfix',
+    firmware: 'MR-OS v7.2.1',
     status: 'done',
     total: 24,
     completed: 23,
@@ -460,7 +460,7 @@ export const otaCampaigns: OTACampaign[] = [
   {
     id: 'ota-004',
     name: 'Config Template Sync v3',
-    firmware: 'v4.2.0-stable',
+    firmware: 'MR-OS v7.2.0',
     status: 'scheduled',
     total: 10,
     completed: 0,
@@ -472,7 +472,7 @@ export const otaCampaigns: OTACampaign[] = [
   {
     id: 'ota-005',
     name: 'Legacy Radio Deprecation',
-    firmware: 'v4.1.5-stable',
+    firmware: 'MR-OS v7.1.5',
     status: 'failed',
     total: 6,
     completed: 2,
@@ -529,7 +529,7 @@ export const alerts: Alert[] = [
     id: 4,
     severity: 'warning',
     title: 'Config Drift Detected — MR-014-A',
-    description: 'MR-014-A running config differs from template mesh-high-gain-v2. Channel width mismatch: expected 40MHz, actual 20MHz.',
+    description: 'MR-014-A running config differs from template meshrider-high-gain-v2. Channel width mismatch: expected 40MHz, actual 20MHz.',
     site: 'Alpha',
     timestamp: relativeTime(120),
     rule: 'config.drift.detected',
@@ -580,8 +580,8 @@ export const alerts: Alert[] = [
   {
     id: 8,
     severity: 'warning',
-    title: 'Firmware v4.1.5 EOL Warning',
-    description: '6 radios on firmware v4.1.5-stable (EOL). No security patches after 2025-03-01. Schedule upgrade to v4.2.1+.',
+    title: 'Mesh Rider OS v7.1.5 EOL Warning',
+    description: '6 radios on MR-OS v7.1.5 (EOL). No security patches after 2025-03-01. Schedule upgrade to MR-OS v7.2.1+.',
     site: 'Echo, Delta',
     timestamp: relativeTime(1440),
     rule: 'firmware.eol.warning',
@@ -594,7 +594,7 @@ export const alerts: Alert[] = [
     id: 9,
     severity: 'info',
     title: 'OTA Campaign ota-003 Completed',
-    description: 'Security Patch v4.2.1-hotfix campaign completed. 23/24 radios updated successfully. 1 failure (MR-009-D offline).',
+    description: 'Security Patch MR-OS v7.2.1-hotfix campaign completed. 23/24 radios updated successfully. 1 failure (MR-009-D offline).',
     site: 'All Sites',
     timestamp: relativeTime(2880),
     rule: 'ota.campaign.done',
@@ -607,7 +607,7 @@ export const alerts: Alert[] = [
     id: 10,
     severity: 'info',
     title: 'New Radio Enrolled — MR-024-D',
-    description: 'MR-024-D (Boost, L+S Band) enrolled at Site Delta. Assigned template mesh-backbone-v2. Config sync complete.',
+    description: 'MR-024-D (Boost, L+S Band) enrolled at Site Delta. Assigned template meshrider-backbone-v2. Config sync complete.',
     site: 'Delta',
     timestamp: relativeTime(600),
     rule: 'radio.enrolled',
@@ -647,23 +647,23 @@ export const alerts: Alert[] = [
 // ─── Audit Events (20+) ────────────────────────────────────────────────────
 
 export const auditEvents: AuditEvent[] = [
-  { id: 1, timestamp: relativeTime(2), operator: 'Marcus Chen', action: 'Logged in via TOTP', actionType: 'access', object: 'session:marcus-chen', sourceIp: '10.42.1.50' },
+  { id: 1, timestamp: relativeTime(2), operator: 'Jabbir', action: 'Logged in via TOTP', actionType: 'access', object: 'session:marcus-chen', sourceIp: '10.42.1.50' },
   { id: 2, timestamp: relativeTime(5), operator: 'Col. Robert Harwell', action: 'Approved OTA campaign ota-002 canary', actionType: 'ota', object: 'ota-002', sourceIp: '10.42.2.10' },
   { id: 3, timestamp: relativeTime(8), operator: 'Kenji Tanaka', action: 'Logged in via TOTP', actionType: 'access', object: 'session:kenji-tanaka', sourceIp: '10.42.3.15' },
   { id: 4, timestamp: relativeTime(12), operator: 'System', action: 'Jamming alert auto-generated', actionType: 'alert', object: 'alert:2', sourceIp: '10.42.0.1' },
   { id: 5, timestamp: relativeTime(15), operator: 'Sarah Okonkwo', action: 'Logged in via TOTP', actionType: 'access', object: 'session:sarah-okonkwo', sourceIp: '10.42.1.55' },
-  { id: 6, timestamp: relativeTime(20), operator: 'Marcus Chen', action: 'Acknowledge alert #3 — thermal throttle', actionType: 'alert', object: 'alert:3', sourceIp: '10.42.1.50' },
+  { id: 6, timestamp: relativeTime(20), operator: 'Jabbir', action: 'Acknowledge alert #3 — thermal throttle', actionType: 'alert', object: 'alert:3', sourceIp: '10.42.1.50' },
   { id: 7, timestamp: relativeTime(25), operator: 'Lt. Priya Sharma', action: 'Deployed config to MR-022-E', actionType: 'config', object: 'radio:MR-022-E', sourceIp: '10.42.2.30' },
   { id: 8, timestamp: relativeTime(30), operator: 'SSG Tyler Brooks', action: 'Viewed radio detail MR-020-E', actionType: 'access', object: 'radio:MR-020-E', sourceIp: '10.42.4.20' },
-  { id: 9, timestamp: relativeTime(40), operator: 'Marcus Chen', action: 'Created OTA campaign ota-004', actionType: 'ota', object: 'ota-004', sourceIp: '10.42.1.50' },
+  { id: 9, timestamp: relativeTime(40), operator: 'Jabbir', action: 'Created OTA campaign ota-004', actionType: 'ota', object: 'ota-004', sourceIp: '10.42.1.50' },
   { id: 10, timestamp: relativeTime(50), operator: 'System', action: 'Agent heartbeat batch processed (23/24)', actionType: 'agent', object: 'system:heartbeat-batch', sourceIp: '10.42.0.1' },
   { id: 11, timestamp: relativeTime(60), operator: 'Col. Robert Harwell', action: 'Started OTA campaign ota-002', actionType: 'ota', object: 'ota-002', sourceIp: '10.42.2.10' },
-  { id: 12, timestamp: relativeTime(75), operator: 'Sarah Okonkwo', action: 'Modified config template mesh-default-v3', actionType: 'config', object: 'template:mesh-default-v3', sourceIp: '10.42.1.55' },
+  { id: 12, timestamp: relativeTime(75), operator: 'Sarah Okonkwo', action: 'Modified config template meshrider-default-v3', actionType: 'config', object: 'template:meshrider-default-v3', sourceIp: '10.42.1.55' },
   { id: 13, timestamp: relativeTime(90), operator: 'System', action: 'Config drift detected on MR-014-A', actionType: 'config', object: 'radio:MR-014-A', sourceIp: '10.42.0.1' },
   { id: 14, timestamp: relativeTime(100), operator: 'Lt. Priya Sharma', action: 'Triggered manual spectrum scan at Charlie', actionType: 'system', object: 'site-charlie:spectrum', sourceIp: '10.42.2.30' },
   { id: 15, timestamp: relativeTime(120), operator: 'Kenji Tanaka', action: 'Scheduled OTA campaign ota-004', actionType: 'ota', object: 'ota-004', sourceIp: '10.42.3.15' },
-  { id: 16, timestamp: relativeTime(150), operator: 'Marcus Chen', action: 'Updated operator role for James Rivera', actionType: 'access', object: 'operator:op-003', sourceIp: '10.42.1.50' },
-  { id: 17, timestamp: relativeTime(180), operator: 'Marcus Chen', action: 'Created OTA campaign ota-001', actionType: 'ota', object: 'ota-001', sourceIp: '10.42.1.50' },
+  { id: 16, timestamp: relativeTime(150), operator: 'Jabbir', action: 'Updated operator role for James Rivera', actionType: 'access', object: 'operator:op-003', sourceIp: '10.42.1.50' },
+  { id: 17, timestamp: relativeTime(180), operator: 'Jabbir', action: 'Created OTA campaign ota-001', actionType: 'ota', object: 'ota-001', sourceIp: '10.42.1.50' },
   { id: 18, timestamp: relativeTime(200), operator: 'System', action: 'Certificate auto-renewal for MR-003-A', actionType: 'system', object: 'cert:MR-003-A', sourceIp: '10.42.0.1' },
   { id: 19, timestamp: relativeTime(240), operator: 'Sarah Okonkwo', action: 'Enrolled new radio MR-024-D', actionType: 'agent', object: 'radio:MR-024-D', sourceIp: '10.42.1.55' },
   { id: 20, timestamp: relativeTime(300), operator: 'Col. Robert Harwell', action: 'Exported audit log (30 days)', actionType: 'access', object: 'audit:export', sourceIp: '10.42.2.10' },

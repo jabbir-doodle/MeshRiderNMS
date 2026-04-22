@@ -38,7 +38,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'fleet', label: 'Fleet Dashboard', icon: LayoutDashboard, badge: 'radios' },
+  { id: 'fleet', label: 'Mesh Rider Dashboard', icon: LayoutDashboard, badge: 'radios' },
   { id: 'topology', label: 'Network Topology', icon: Network },
   { id: 'ota', label: 'OTA Campaigns', icon: UploadCloud },
   { id: 'spectrum', label: 'Spectrum Intelligence', icon: Activity },
@@ -53,67 +53,48 @@ const TENANTS = [
   { id: 'charlie-team', label: 'Charlie Team' },
 ]
 
-// Hexagonal mesh SVG logo
-function MeshLogo() {
+// Doodle Labs logo (official)
+function DoodleLabsLogo() {
   return (
     <div className="relative flex items-center justify-center flex-shrink-0">
       {/* Subtle glow effect behind the logo */}
       <div
-        className="absolute inset-0 rounded-full blur-md opacity-40"
+        className="absolute inset-0 rounded-full blur-md opacity-30"
         style={{ backgroundColor: '#f4a417' }}
       />
-      <svg width="34" height="34" viewBox="0 0 40 40" fill="none" className="relative">
-        {/* Outer hexagon */}
-        <polygon
-          points="20,2 36,11 36,29 20,38 4,29 4,11"
-          stroke="#f4a417"
-          strokeWidth="1.5"
-          fill="rgba(244, 164, 23, 0.08)"
-        />
-        {/* Inner hexagon (smaller, offset) */}
-        <polygon
-          points="20,9 28,14 28,26 20,31 12,26 12,14"
-          stroke="#f4a417"
-          strokeWidth="1"
-          fill="rgba(244, 164, 23, 0.12)"
-          opacity="0.7"
-        />
-        {/* Center dot (mesh node) */}
-        <circle cx="20" cy="20" r="3" fill="#f4a417" opacity="0.9" />
-        {/* Connection lines to vertices (mesh pattern) */}
-        <line x1="20" y1="20" x2="20" y2="9" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
-        <line x1="20" y1="20" x2="28" y2="14" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
-        <line x1="20" y1="20" x2="28" y2="26" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
-        <line x1="20" y1="20" x2="20" y2="31" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
-        <line x1="20" y1="20" x2="12" y2="26" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
-        <line x1="20" y1="20" x2="12" y2="14" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
-        {/* Corner dots (mesh nodes) */}
-        <circle cx="20" cy="9" r="1.5" fill="#f4a417" opacity="0.6" />
-        <circle cx="28" cy="14" r="1.5" fill="#f4a417" opacity="0.6" />
-        <circle cx="28" cy="26" r="1.5" fill="#f4a417" opacity="0.6" />
-        <circle cx="20" cy="31" r="1.5" fill="#f4a417" opacity="0.6" />
-        <circle cx="12" cy="26" r="1.5" fill="#f4a417" opacity="0.6" />
-        <circle cx="12" cy="14" r="1.5" fill="#f4a417" opacity="0.6" />
-      </svg>
+      <img
+        src="/doodle-labs-logo.png"
+        alt="Doodle Labs"
+        className="relative w-[40px] h-[19px] object-contain"
+      />
     </div>
   )
 }
 
-// LIVE pulsing indicator
+// LIVE pulsing indicator with tooltip
 function LiveIndicator() {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="relative flex items-center justify-center">
-        <span className="w-2 h-2 rounded-full bg-[#3ddc97]" />
-        <span className="absolute w-2 h-2 rounded-full bg-[#3ddc97] animate-ping opacity-75" />
-      </span>
-      <span
-        className="text-[9px] font-bold font-mono tracking-widest"
-        style={{ color: '#3ddc97' }}
-      >
-        LIVE
-      </span>
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1.5 cursor-default">
+            <span className="relative flex items-center justify-center">
+              <span className="w-2 h-2 rounded-full bg-[#3ddc97] animate-live-pulse" />
+              <span className="absolute w-2 h-2 rounded-full bg-[#3ddc97] animate-ping opacity-75" />
+            </span>
+            <span
+              className="text-[9px] font-bold font-mono tracking-widest"
+              style={{ color: '#3ddc97' }}
+            >
+              LIVE
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="bg-[#161c27] border-[#2c3647] text-[#aeb8c8] text-xs">
+          System Online · All 24 nodes reachable
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 
@@ -131,6 +112,7 @@ export function NMSSidebar() {
   } = useNMSStore()
 
   const [isMobile, setIsMobile] = useState(false)
+  const [hoveredNav, setHoveredNav] = useState<string | null>(null)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -160,22 +142,33 @@ export function NMSSidebar() {
   const collapsed = sidebarCollapsed || isMobile
 
   const navContent = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {/* Animated gradient line at top */}
+      <div
+        className="gradient-line-amber-cyan w-full flex-shrink-0"
+      />
+
       {/* Brand */}
-      <div className="flex flex-col gap-2 px-4 py-3 border-b border-[#1a2230]">
+      <div className="flex flex-col gap-3 px-4 py-4 border-b border-[#1a2230]">
         <div className="flex items-center gap-3">
-          <MeshLogo />
+          <DoodleLabsLogo />
           {!collapsed && (
             <div className="flex flex-col overflow-hidden">
-              <span className="text-[11px] font-bold tracking-[0.2em] uppercase" style={{ color: '#f4a417' }}>
+              <span className="text-[11px] font-bold tracking-[0.15em] uppercase" style={{ color: '#f4a417' }}>
                 DOODLE LABS
               </span>
               <span className="text-xs font-semibold tracking-wider" style={{ color: '#e7ecf4' }}>
-                FLEET NMS
+                MESH RIDER NMS
               </span>
             </div>
           )}
         </div>
+        {/* Subtle divider */}
+        {!collapsed && (
+          <div className="h-px w-full" style={{
+            background: 'linear-gradient(90deg, #f4a41722, #222b39 50%, transparent)',
+          }} />
+        )}
         {!collapsed && (
           <div className="flex items-center justify-between">
             <LiveIndicator />
@@ -187,7 +180,7 @@ export function NMSSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto mesh-bg">
         {NAV_ITEMS.map((item) => {
           const isActive = currentView === item.id
           const Icon = item.icon
@@ -196,13 +189,20 @@ export function NMSSidebar() {
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
+              onMouseEnter={() => setHoveredNav(item.id)}
+              onMouseLeave={() => setHoveredNav(null)}
               className={cn(
                 'group relative flex items-center w-full rounded-md transition-all duration-150',
                 collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
                 isActive
-                  ? 'bg-[#f4a417]/10 text-[#f4a417] border-l-2 border-[#f4a417]'
-                  : 'text-[#6f7d93] hover:bg-[#161c27] hover:text-[#aeb8c8] border-l-2 border-transparent'
+                  ? 'bg-[#f4a417]/10 text-[#f4a417]'
+                  : 'text-[#6f7d93] hover:bg-[#161c27] hover:text-[#aeb8c8]'
               )}
+              style={{
+                borderLeft: '2px solid',
+                borderLeftColor: isActive ? '#f4a417' : (hoveredNav === item.id ? '#f4a41766' : 'transparent'),
+                transition: 'all 0.2s ease',
+              }}
             >
               <Icon className={cn('flex-shrink-0', collapsed ? 'h-5 w-5' : 'h-[18px] w-[18px]')} />
               {!collapsed && (
@@ -223,7 +223,7 @@ export function NMSSidebar() {
               {item.badge === 'alerts' && alertCount > 0 && (
                 <span
                   className={cn(
-                    'flex items-center justify-center rounded-full text-[10px] font-mono font-bold bg-[#ff5470] text-white',
+                    'flex items-center justify-center rounded-full text-[10px] font-mono font-bold bg-[#ff5470] text-white animate-badge-bounce',
                     collapsed ? 'absolute -top-1 -right-1 h-4 w-4' : 'ml-auto h-5 min-w-[20px] px-1.5'
                   )}
                 >

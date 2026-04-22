@@ -31,6 +31,11 @@ interface NMSState {
   stateFilter: string;
   searchQuery: string;
 
+  // Fleet summary
+  alertCount: number;
+  onlineRadios: number;
+  totalRadios: number;
+
   // Actions — Navigation
   setView: (view: NMSView) => void;
   toggleSidebar: () => void;
@@ -54,6 +59,11 @@ export const useNMSStore = create<NMSState>((set) => ({
   siteFilter: 'all',
   stateFilter: 'all',
   searchQuery: '',
+
+  // Fleet summary
+  alertCount: 2,
+  onlineRadios: 22,
+  totalRadios: 24,
 
   // Navigation actions
   setView: (view) => set({ currentView: view }),

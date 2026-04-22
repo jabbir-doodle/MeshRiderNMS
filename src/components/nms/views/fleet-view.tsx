@@ -1,5 +1,5 @@
 // =============================================================================
-// Mesh Rider Fleet NMS — Fleet Dashboard View
+// Mesh Rider NMS — Fleet Dashboard View
 // Task ID: 3-a | Main fleet overview with KPIs, filters, and radio table
 // =============================================================================
 
@@ -28,6 +28,7 @@ import {
   TEXT,
   BORDER,
 } from '@/components/nms/nms-utils';
+import { useRealtimeSimulation } from '@/hooks/use-realtime-simulation';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -49,6 +50,343 @@ function seededSparkline(seed: number, variance: number, base: number): number[]
   return data;
 }
 
+// ─── Data Export Modal ──────────────────────────────────────────────────────
+
+interface ExportModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+function DataExportModal({ open, onClose }: ExportModalProps) {
+  const [exportFormat, setExportFormat] = useState<'csv' | 'json' | 'pdf'>('csv');
+  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'custom'>('30d');
+  const [dataScope, setDataScope] = useState<'all' | 'site' | 'filter'>('all');
+  const [exporting, setExporting] = useState(false);
+
+  if (!open) return null;
+
+  const handleExport = () => {
+    setExporting(true);
+    setTimeout(() => {
+      setExporting(false);
+      onClose();
+    }, 2000);
+  };
+
+  const formats = [
+    { key: 'csv' as const, label: 'CSV', desc: 'Comma-separated values', icon: '📊' },
+    { key: 'json' as const, label: 'JSON', desc: 'Structured data format', icon: '🔧' },
+    { key: 'pdf' as const, label: 'PDF', desc: 'Formatted report', icon: '📄' },
+  ];
+
+  const scopes = [
+    { key: 'all' as const, label: 'All Radios' },
+    { key: 'site' as const, label: 'Selected Site' },
+    { key: 'filter' as const, label: 'Current Filter' },
+  ];
+
+  const ranges = [
+    { key: '7d' as const, label: 'Last 7 days' },
+    { key: '30d' as const, label: 'Last 30 days' },
+    { key: '90d' as const, label: 'Last 90 days' },
+    { key: 'custom' as const, label: 'Custom range' },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 glass-card" style={{ backdropFilter: 'blur(8px)', background: 'rgba(7, 9, 13, 0.75)' }} />
+
+      {/* Modal */}
+      <div
+        className="relative w-full max-w-md rounded-xl border overflow-hidden"
+        style={{
+          backgroundColor: BG.card,
+          borderColor: BORDER.default,
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(244, 164, 23, 0.05)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: BORDER.default }}>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: TEXT.primary }}>Data Export</h3>
+            <p className="text-[11px] mt-0.5" style={{ color: TEXT.tertiary }}>Generate a report from fleet data</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-[#161c27] transition-colors"
+            style={{ color: TEXT.tertiary }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-5">
+          {/* Export Format */}
+          <div>
+            <label className="text-[11px] font-medium uppercase tracking-wider block mb-2" style={{ color: TEXT.tertiary }}>
+              Format
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {formats.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setExportFormat(f.key)}
+                  className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border transition-all duration-150"
+                  style={{
+                    backgroundColor: exportFormat === f.key ? '#f4a41715' : BG.elevated,
+                    borderColor: exportFormat === f.key ? '#f4a41750' : BORDER.default,
+                    color: exportFormat === f.key ? COLORS.amber : TEXT.secondary,
+                  }}
+                >
+                  <span className="text-lg">{f.icon}</span>
+                  <span className="text-[11px] font-semibold">{f.label}</span>
+                  <span className="text-[9px]" style={{ color: TEXT.tertiary }}>{f.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date Range */}
+          <div>
+            <label className="text-[11px] font-medium uppercase tracking-wider block mb-2" style={{ color: TEXT.tertiary }}>
+              Date Range
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {ranges.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => setDateRange(r.key)}
+                  className="px-3 py-1.5 rounded-md text-[11px] font-medium transition-all"
+                  style={{
+                    backgroundColor: dateRange === r.key ? '#f4a41720' : 'transparent',
+                    color: dateRange === r.key ? COLORS.amber : TEXT.secondary,
+                    border: `1px solid ${dateRange === r.key ? '#f4a41740' : BORDER.default}`,
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            {/* Mock date inputs */}
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="text"
+                placeholder="2025-03-22"
+                className="flex-1 px-3 py-1.5 rounded-md text-[11px] font-mono outline-none"
+                style={{ backgroundColor: BG.input, border: `1px solid ${BORDER.default}`, color: TEXT.primary }}
+              />
+              <span className="text-[11px]" style={{ color: TEXT.tertiary }}>to</span>
+              <input
+                type="text"
+                placeholder="2025-04-22"
+                className="flex-1 px-3 py-1.5 rounded-md text-[11px] font-mono outline-none"
+                style={{ backgroundColor: BG.input, border: `1px solid ${BORDER.default}`, color: TEXT.primary }}
+              />
+            </div>
+          </div>
+
+          {/* Data Scope */}
+          <div>
+            <label className="text-[11px] font-medium uppercase tracking-wider block mb-2" style={{ color: TEXT.tertiary }}>
+              Data Scope
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {scopes.map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setDataScope(s.key)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all"
+                  style={{
+                    backgroundColor: dataScope === s.key ? '#2c3647' : 'transparent',
+                    color: dataScope === s.key ? TEXT.primary : TEXT.secondary,
+                    border: `1px solid ${dataScope === s.key ? BORDER.hover : 'transparent'}`,
+                  }}
+                >
+                  {s.key === dataScope && (
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.cyan }} />
+                  )}
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: BORDER.default }}>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+            style={{ color: TEXT.secondary, backgroundColor: BG.elevated, border: `1px solid ${BORDER.default}` }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+            style={{ backgroundColor: COLORS.amber, color: '#07090d' }}
+          >
+            {exporting ? (
+              <>
+                <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Exporting…
+              </>
+            ) : (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export {exportFormat.toUpperCase()}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Network Health Score Panel ─────────────────────────────────────────────
+
+function NetworkHealthScore() {
+  const { tick, fluctuate } = useRealtimeSimulation();
+
+  const segments = [
+    { label: 'Mesh Connectivity', value: fluctuate(95, 2), color: COLORS.ok },
+    { label: 'Signal Quality', value: fluctuate(88, 3), color: COLORS.cyan },
+    { label: 'Throughput', value: fluctuate(92, 2.5), color: COLORS.amber },
+    { label: 'Security', value: fluctuate(100, 0), color: COLORS.ok },
+  ];
+
+  const overallScore = Math.round(
+    segments.reduce((sum, s) => sum + s.value, 0) / segments.length
+  );
+
+  const scoreColor = overallScore > 90 ? COLORS.ok : overallScore > 70 ? COLORS.amber : COLORS.err;
+
+  // SVG circular progress
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (overallScore / 100) * circumference;
+  const offset = circumference - progress;
+
+  return (
+    <div
+      className="rounded-lg border overflow-hidden hover-lift"
+      style={{ backgroundColor: BG.card, borderColor: BORDER.default }}
+    >
+      <PanelHeader
+        title="Network Health Score"
+        subtitle="Real-time mesh network assessment"
+        right={
+          <span
+            className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: `${scoreColor}15`,
+              color: scoreColor,
+              border: `1px solid ${scoreColor}30`,
+            }}
+          >
+            Updated just now
+          </span>
+        }
+      />
+      <div className="p-5 flex flex-col lg:flex-row items-center gap-6">
+        {/* Circular Score */}
+        <div className="flex-shrink-0 relative">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            {/* Background circle */}
+            <circle
+              cx="70"
+              cy="70"
+              r={radius}
+              fill="none"
+              stroke="#222b39"
+              strokeWidth="8"
+            />
+            {/* Progress circle */}
+            <circle
+              cx="70"
+              cy="70"
+              r={radius}
+              fill="none"
+              stroke={scoreColor}
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              transform="rotate(-90 70 70)"
+              style={{
+                transition: 'stroke-dashoffset 1s ease, stroke 0.5s ease',
+                filter: `drop-shadow(0 0 6px ${scoreColor}44)`,
+              }}
+            />
+            {/* Inner glow ring */}
+            <circle
+              cx="70"
+              cy="70"
+              r={radius - 12}
+              fill="none"
+              stroke={`${scoreColor}11`}
+              strokeWidth="1"
+            />
+          </svg>
+          {/* Score text centered */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span
+              className="text-3xl font-bold tabular-nums leading-none animate-score-pulse"
+              style={{ color: scoreColor }}
+            >
+              {overallScore}
+            </span>
+            <span className="text-[10px] font-medium mt-1" style={{ color: TEXT.tertiary }}>
+              out of 100
+            </span>
+          </div>
+        </div>
+
+        {/* Segment Bars */}
+        <div className="flex-1 w-full space-y-3.5">
+          {segments.map((seg) => (
+            <div key={seg.label}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium" style={{ color: TEXT.secondary }}>
+                  {seg.label}
+                </span>
+                <span
+                  className="text-[11px] font-mono font-semibold tabular-nums"
+                  style={{ color: seg.color }}
+                >
+                  {Math.round(seg.value)}%
+                </span>
+              </div>
+              <div
+                className="w-full rounded-full overflow-hidden"
+                style={{ height: 5, backgroundColor: '#222b39' }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${seg.value}%`,
+                    backgroundColor: seg.color,
+                    minWidth: seg.value > 0 ? 2 : 0,
+                    boxShadow: `0 0 8px ${seg.color}44`,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Fleet Dashboard Component ──────────────────────────────────────────────
 
 export default function FleetView() {
@@ -64,6 +402,7 @@ export default function FleetView() {
 
   const [sortKey, setSortKey] = useState<SortKey>('callsign');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [exportOpen, setExportOpen] = useState(false);
 
   const stats = getRadioStats();
   const alertStats = getAlertStats();
@@ -148,31 +487,51 @@ export default function FleetView() {
   }, [])
 
   return (
-    <div className="p-4 lg:p-6 space-y-5" style={{ backgroundColor: BG.panel }}>
+    <div className="p-4 lg:p-6 space-y-5 grid-bg" style={{ backgroundColor: BG.panel }}>
       {/* ── Welcome Banner ── */}
       <div
-        className="relative rounded-lg overflow-hidden"
+        className="relative rounded-lg overflow-hidden animate-border-glow"
         style={{
           background: 'linear-gradient(135deg, #11161f 0%, #161c27 100%)',
-          border: `1px solid ${BORDER.default}`,
+          border: `1px solid rgba(244, 164, 23, 0.3)`,
         }}
       >
+        {/* Mesh grid background pattern */}
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 1px 1px, rgba(45, 212, 255, 0.12) 1px, transparent 0)',
+            backgroundSize: '24px 24px',
+          }}
+        />
         {/* Left amber accent border */}
         <div
           className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
           style={{
-            background: `linear-gradient(180deg, ${COLORS.amber}, ${COLORS.amber}88, ${COLORS.amber})`,
+            background: `linear-gradient(180deg, ${COLORS.amber}, ${COLORS.cyan}88, ${COLORS.amber})`,
           }}
         />
-        <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="relative px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold" style={{ color: TEXT.primary }}>
-                Welcome back, <span style={{ color: COLORS.amber }}>Marcus Chen</span>
+                Welcome back, <span style={{ color: COLORS.amber }}>Jabbir</span>
               </span>
             </div>
             <div className="flex items-center gap-3 text-[11px] font-mono" style={{ color: TEXT.tertiary }}>
               <span>{currentDate}</span>
+              <span>·</span>
+              <span
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider"
+                style={{
+                  backgroundColor: '#2dd4ff12',
+                  color: '#2dd4ff',
+                  border: '1px solid #2dd4ff25',
+                }}
+              >
+                Mesh Rider OS v7.2.1
+              </span>
               <span>·</span>
               <span>Last login: 2 minutes ago</span>
             </div>
@@ -180,7 +539,7 @@ export default function FleetView() {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Quick stat chips */}
             <span
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all duration-150 hover:scale-[1.03] hover:shadow-lg cursor-default"
               style={{
                 backgroundColor: `${COLORS.ok}12`,
                 color: COLORS.ok,
@@ -191,7 +550,7 @@ export default function FleetView() {
               24 Radios Online
             </span>
             <span
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all duration-150 hover:scale-[1.03] hover:shadow-lg cursor-default"
               style={{
                 backgroundColor: `${COLORS.err}12`,
                 color: COLORS.err,
@@ -202,7 +561,7 @@ export default function FleetView() {
               2 Alerts Active
             </span>
             <span
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all duration-150 hover:scale-[1.03] hover:shadow-lg cursor-default"
               style={{
                 backgroundColor: `${COLORS.ok}12`,
                 color: COLORS.ok,
@@ -221,22 +580,36 @@ export default function FleetView() {
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
           <div>
             <h1 className="text-2xl lg:text-3xl font-bold tracking-tight" style={{ color: TEXT.primary }}>
-              Fleet <span style={{ color: COLORS.amber }}>Dashboard</span>
+              Mesh Rider <span style={{ color: COLORS.amber }}>Dashboard</span>
             </h1>
             <p className="text-xs mt-1 font-mono" style={{ color: TEXT.tertiary }}>
-              Live fleet overview · {stats.total} radios · one dashboard
+              Live fleet overview · {stats.total} Mesh Rider radios · one dashboard
             </p>
           </div>
-          <button
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98] shrink-0"
-            style={{
-              backgroundColor: COLORS.amber,
-              color: '#07090d',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Radio
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setExportOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+              style={{
+                backgroundColor: BG.elevated,
+                color: TEXT.secondary,
+                border: `1px solid ${BORDER.default}`,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+            <button
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98] shrink-0"
+              style={{
+                backgroundColor: COLORS.amber,
+                color: '#07090d',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Radio
+            </button>
+          </div>
         </div>
 
         {/* ── Filters Row ── */}
@@ -363,6 +736,9 @@ export default function FleetView() {
           icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
         />
       </div>
+
+      {/* ── Network Health Score Panel ── */}
+      <NetworkHealthScore />
 
       {/* ── Radio Fleet Table ── */}
       <div
@@ -559,6 +935,9 @@ export default function FleetView() {
           </div>
         )}
       </div>
+
+      {/* ── Data Export Modal ── */}
+      <DataExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   );
 }
