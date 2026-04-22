@@ -14,9 +14,12 @@ export default function AlertsView() {
 
   const sevLabel = (sev: string) => sev.toUpperCase()
 
+  // Deterministic pseudo-random for hydration safety
+  const detRand = (i: number) => Math.abs(Math.sin((i + 7) * 12.9898 + 78.233) * 43758.5453) % 1
+
   // Generate mock telemetry data for sparkline
   const telemetryData = useState(() =>
-    Array.from({ length: 30 }, (_, i) => 14 + Math.sin(i * 0.4) * 7 + (Math.random() - 0.5) * 4)
+    Array.from({ length: 30 }, (_, i) => 14 + Math.sin(i * 0.4) * 7 + (detRand(i) - 0.5) * 4)
   )[0]
 
   return (

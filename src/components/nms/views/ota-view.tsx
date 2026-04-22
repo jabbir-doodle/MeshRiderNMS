@@ -71,16 +71,19 @@ function generateOTARows(campaign: OTACampaign): RadioOTARow[] {
   const stageIndex = stages.indexOf(campaign.stage);
   const now = new Date();
 
+  // Deterministic pseudo-random for hydration safety
+  const detRand = (i: number) => Math.abs(Math.sin((i + 3) * 12.9898 + 78.233) * 43758.5453) % 1
+
   campaignRadios.forEach((r, i) => {
     const state = states[i];
     const sIdx = Math.min(stageIndex, stages.length - 1);
     const progress =
       state === 'complete' ? 100 :
-      state === 'failed' ? Math.floor(20 + Math.random() * 60) :
-      state === 'in-progress' ? Math.floor(15 + Math.random() * 55) :
+      state === 'failed' ? Math.floor(20 + detRand(i) * 60) :
+      state === 'in-progress' ? Math.floor(15 + detRand(i + 50) * 55) :
       state === 'rollback' ? 0 : 0;
 
-    const minutesAgo = i * 3 + Math.floor(Math.random() * 5);
+    const minutesAgo = i * 3 + Math.floor(detRand(i + 100) * 5);
     const started = new Date(now.getTime() - (minutesAgo + 10) * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
     const finished = state === 'complete'
       ? new Date(now.getTime() - minutesAgo * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })

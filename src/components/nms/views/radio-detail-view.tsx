@@ -12,9 +12,14 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Deterministic pseudo-random for hydration safety (sin-hash)
+function detRand(i: number, offset = 0): number {
+  return Math.abs(Math.sin((i + offset) * 12.9898 + 78.233) * 43758.5453) % 1;
+}
+
 function generateSparkline(baseValue: number, variance: number, noise: number, count = 20): number[] {
   return Array.from({ length: count }, (_, i) =>
-    Math.round((baseValue + Math.sin(i * 0.5) * variance + Math.random() * noise) * 10) / 10
+    Math.round((baseValue + Math.sin(i * 0.5) * variance + detRand(i) * noise) * 10) / 10
   );
 }
 
@@ -40,10 +45,10 @@ const TIME_RANGES: { value: TimeRange; label: string }[] = [
 function LinkQualityChart({ snr, timeRange }: { snr: number; timeRange: TimeRange }) {
   const pointCount = timeRange === '1H' ? 12 : timeRange === '6H' ? 24 : timeRange === '24H' ? 48 : 56;
   const snrData = Array.from({ length: pointCount }, (_, i) =>
-    Math.max(0, snr + Math.sin(i * 0.4) * 5 + (Math.random() - 0.5) * 6)
+    Math.max(0, snr + Math.sin(i * 0.4) * 5 + (detRand(i, 10) - 0.5) * 6)
   );
   const perData = Array.from({ length: pointCount }, (_, i) =>
-    Math.max(0, Math.min(100, 3 + Math.sin(i * 0.3 + 2) * 4 + Math.random() * 5))
+    Math.max(0, Math.min(100, 3 + Math.sin(i * 0.3 + 2) * 4 + detRand(i, 20) * 5))
   );
 
   const w = 600;

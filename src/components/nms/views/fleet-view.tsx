@@ -136,8 +136,86 @@ export default function FleetView() {
   // Reset page when filters change
   React.useEffect(() => { setPage(0); }, [siteFilter, stateFilter, searchQuery]);
 
+  // Format current date for welcome banner
+  const currentDate = useMemo(() => {
+    const now = new Date()
+    return now.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }, [])
+
   return (
     <div className="p-4 lg:p-6 space-y-5" style={{ backgroundColor: BG.panel }}>
+      {/* ── Welcome Banner ── */}
+      <div
+        className="relative rounded-lg overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #11161f 0%, #161c27 100%)',
+          border: `1px solid ${BORDER.default}`,
+        }}
+      >
+        {/* Left amber accent border */}
+        <div
+          className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
+          style={{
+            background: `linear-gradient(180deg, ${COLORS.amber}, ${COLORS.amber}88, ${COLORS.amber})`,
+          }}
+        />
+        <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold" style={{ color: TEXT.primary }}>
+                Welcome back, <span style={{ color: COLORS.amber }}>Marcus Chen</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] font-mono" style={{ color: TEXT.tertiary }}>
+              <span>{currentDate}</span>
+              <span>·</span>
+              <span>Last login: 2 minutes ago</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Quick stat chips */}
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium"
+              style={{
+                backgroundColor: `${COLORS.ok}12`,
+                color: COLORS.ok,
+                border: `1px solid ${COLORS.ok}25`,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.ok }} />
+              24 Radios Online
+            </span>
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium"
+              style={{
+                backgroundColor: `${COLORS.err}12`,
+                color: COLORS.err,
+                border: `1px solid ${COLORS.err}25`,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.err }} />
+              2 Alerts Active
+            </span>
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium"
+              style={{
+                backgroundColor: `${COLORS.ok}12`,
+                color: COLORS.ok,
+                border: `1px solid ${COLORS.ok}25`,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.ok }} />
+              All Systems Operational
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Header ── */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
@@ -338,9 +416,18 @@ export default function FleetView() {
               {pagedRadios.map((radio, idx) => (
                 <tr
                   key={radio.id}
-                  className="transition-colors cursor-pointer hover:bg-[#161c27]"
+                  className="transition-all duration-150 cursor-pointer group"
                   style={{
                     borderBottom: `1px solid ${BORDER.default}33`,
+                    backgroundColor: idx % 2 === 0 ? '#11161f' : '#0e1219',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(244, 164, 23, 0.06)'
+                    e.currentTarget.style.borderLeft = `2px solid ${COLORS.amber}`
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#11161f' : '#0e1219'
+                    e.currentTarget.style.borderLeft = '2px solid transparent'
                   }}
                   onClick={() => selectRadio(radio.id)}
                 >

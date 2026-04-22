@@ -137,6 +137,22 @@ export interface SpectrumEvent {
   duration: string;
 }
 
+// ─── Seeded PRNG (Mulberry32) — prevents hydration mismatch ─────────
+// Using a fixed seed so server and client produce identical data.
+function mulberry32(seed: number): () => number {
+  let a = seed | 0;
+  a = (a + 0x6d2b79f5) | 0;
+  return (): number => {
+    let t = (a += 0x1) | 0;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const seededRandom = mulberry32(42);
+// Fixed reference timestamp for consistent dates
+const NOW = 1745283200000; // 2025-04-22T00:00:00Z
+
 // ─── Helper generators ──────────────────────────────────────────────────────
 
 const siteMeta = [
@@ -155,7 +171,7 @@ const configTemplates = ['mesh-default-v3', 'mesh-high-gain-v2', 'mesh-low-power
 const states: RadioState[] = ['online', 'online', 'online', 'online', 'online', 'online', 'online', 'online', 'degraded', 'degraded', 'offline', 'error'];
 
 function randomPick<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  return arr[Math.floor(seededRandom() * arr.length)];
 }
 
 function macFromIndex(i: number): string {
@@ -175,13 +191,13 @@ function ipFromIndex(i: number): string {
 }
 
 function generateUptime(days: number): string {
-  const h = days * 24 + Math.floor(Math.random() * 12);
+  const h = days * 24 + Math.floor(seededRandom() * 12);
   if (h >= 48) return `${Math.floor(h / 24)}d ${h % 24}h`;
-  return `${h}h ${Math.floor(Math.random() * 59)}m`;
+  return `${h}h ${Math.floor(seededRandom() * 59)}m`;
 }
 
 function relativeTime(minutesAgo: number): string {
-  const d = new Date(Date.now() - minutesAgo * 60_000);
+  const d = new Date(NOW - minutesAgo * 60_000);
   return d.toISOString();
 }
 
@@ -206,21 +222,21 @@ export const radios: Radio[] = Array.from({ length: 24 }, (_, i) => {
     agentVersion: agentVersions[i % agentVersions.length],
     siteName: site.name,
     siteId: site.id,
-    snr: isOnline ? Math.round(12 + Math.random() * 25) : state === 'degraded' ? Math.round(5 + Math.random() * 10) : 0,
-    throughput: isOnline ? Math.round(20 + Math.random() * 180) : state === 'degraded' ? Math.round(5 + Math.random() * 30) : 0,
-    txPower: isOnline ? Math.round(15 + Math.random() * 10) : 0,
-    cpu: isOnline ? Math.round(15 + Math.random() * 60) : 0,
-    temp: isOnline ? Math.round(38 + Math.random() * 22) : 25,
-    battery: i < 6 ? Math.round(85 + Math.random() * 15) : 100,
-    uptime: isOnline ? generateUptime(Math.floor(1 + Math.random() * 30)) : '0d 0h',
-    lastSeen: isOnline ? relativeTime(Math.floor(Math.random() * 5)) : relativeTime(Math.floor(15 + Math.random() * 2880)),
+    snr: isOnline ? Math.round(12 + seededRandom() * 25) : state === 'degraded' ? Math.round(5 + seededRandom() * 10) : 0,
+    throughput: isOnline ? Math.round(20 + seededRandom() * 180) : state === 'degraded' ? Math.round(5 + seededRandom() * 30) : 0,
+    txPower: isOnline ? Math.round(15 + seededRandom() * 10) : 0,
+    cpu: isOnline ? Math.round(15 + seededRandom() * 60) : 0,
+    temp: isOnline ? Math.round(38 + seededRandom() * 22) : 25,
+    battery: i < 6 ? Math.round(85 + seededRandom() * 15) : 100,
+    uptime: isOnline ? generateUptime(Math.floor(1 + seededRandom() * 30)) : '0d 0h',
+    lastSeen: isOnline ? relativeTime(Math.floor(seededRandom() * 5)) : relativeTime(Math.floor(15 + seededRandom() * 2880)),
     configTemplate: configTemplates[i % configTemplates.length],
-    configState: Math.random() > 0.85 ? 'drift' : 'in-sync',
-    enrolled: relativeTime(Math.floor(1440 * (5 + Math.random() * 60))),
-    certExpiry: new Date(Date.now() + (180 + Math.floor(Math.random() * 365)) * 86400000).toISOString().split('T')[0],
-    lat: site.lat + (Math.random() - 0.5) * 0.02,
-    lng: site.lng + (Math.random() - 0.5) * 0.02,
-    neighbors: isOnline ? Math.floor(2 + Math.random() * 6) : 0,
+    configState: seededRandom() > 0.85 ? 'drift' : 'in-sync',
+    enrolled: relativeTime(Math.floor(1440 * (5 + seededRandom() * 60))),
+    certExpiry: new Date(NOW + (180 + Math.floor(seededRandom() * 365)) * 86400000).toISOString().split('T')[0],
+    lat: site.lat + (seededRandom() - 0.5) * 0.02,
+    lng: site.lng + (seededRandom() - 0.5) * 0.02,
+    neighbors: isOnline ? Math.floor(2 + seededRandom() * 6) : 0,
   };
 });
 
@@ -238,16 +254,16 @@ function generateLinks(): Link[] {
       for (let j = i + 1; j < siteRadios.length; j++) {
         const a = siteRadios[i];
         const b = siteRadios[j];
-        const snr = Math.round(18 + Math.random() * 20);
+        const snr = Math.round(18 + seededRandom() * 20);
         links.push({
           id: id++,
           radioA: a.id,
           radioB: b.id,
           snr,
           quality: snr > 25 ? 'ok' : snr > 15 ? 'warn' : 'err',
-          rxAvg: Math.round(30 + Math.random() * 120),
-          txAvg: Math.round(30 + Math.random() * 120),
-          retries: Math.round(Math.random() * 5),
+          rxAvg: Math.round(30 + seededRandom() * 120),
+          txAvg: Math.round(30 + seededRandom() * 120),
+          retries: Math.round(seededRandom() * 5),
         });
       }
     }
@@ -259,18 +275,18 @@ function generateLinks(): Link[] {
     const siteA = radios.filter(r => r.siteId === siteMeta[s1].id && (r.state === 'online' || r.state === 'degraded'));
     const siteB = radios.filter(r => r.siteId === siteMeta[s2].id && (r.state === 'online' || r.state === 'degraded'));
     // Connect 1-2 pairs between sites
-    const pairCount = 1 + Math.floor(Math.random() * 2);
+    const pairCount = 1 + Math.floor(seededRandom() * 2);
     for (let p = 0; p < Math.min(pairCount, siteA.length, siteB.length); p++) {
-      const snr = Math.round(10 + Math.random() * 18);
+      const snr = Math.round(10 + seededRandom() * 18);
       links.push({
         id: id++,
         radioA: siteA[p].id,
         radioB: siteB[p].id,
         snr,
         quality: snr > 22 ? 'ok' : snr > 14 ? 'warn' : 'err',
-        rxAvg: Math.round(15 + Math.random() * 80),
-        txAvg: Math.round(15 + Math.random() * 80),
-        retries: Math.round(Math.random() * 8),
+        rxAvg: Math.round(15 + seededRandom() * 80),
+        txAvg: Math.round(15 + seededRandom() * 80),
+        retries: Math.round(seededRandom() * 8),
       });
     }
   }
@@ -665,7 +681,7 @@ function generateSpectrumData(): SpectrumPoint[] {
   let lastPower = noiseFloor;
 
   for (let freq = 2412; freq <= 2484; freq++) {
-    let power = noiseFloor + Math.random() * 8; // baseline noise
+    let power = noiseFloor + seededRandom() * 8; // baseline noise
 
     // WiFi channel centers (1-14 in 2.4GHz)
     const wifiChannels = [
@@ -680,18 +696,18 @@ function generateSpectrumData(): SpectrumPoint[] {
       if (dist < ch.width / 2) {
         // Bell curve power distribution around channel center
         const shape = Math.exp(-(dist * dist) / (2 * 6 * 6));
-        power += shape * (20 + Math.random() * 15);
+        power += shape * (20 + seededRandom() * 15);
       }
     }
 
     // Narrowband interference at 2450 MHz (Bluetooth)
     if (freq >= 2445 && freq <= 2455) {
-      power += 12 + Math.random() * 5;
+      power += 12 + seededRandom() * 5;
     }
 
     // Jammer signature: broad interference at 2440-2460 MHz
     if (freq >= 2440 && freq <= 2460) {
-      power += 8 + Math.random() * 4;
+      power += 8 + seededRandom() * 4;
     }
 
     // Smooth with previous point to avoid jitter

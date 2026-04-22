@@ -144,3 +144,35 @@ Stage Summary:
 - Backend API fully functional
 - Dark tactical theme applied globally
 - Zero ESLint errors in source code
+
+---
+Task ID: r5-r6
+Agent: Main
+Task: Styling polish and new feature enhancements (5 subtasks)
+
+Work Log:
+- Updated sidebar branding with hexagonal mesh SVG logo, "DOODLE LABS" + "FLEET NMS" text, amber glow behind logo, and LIVE pulsing green indicator
+- Added real-time UTC clock (HH:MM:SS) to topbar, updates every second via setInterval, shown in monospace font
+- Created ConnectionStatus component with animated pulse indicator, shows "CONNECTED · 24/24 NODES", integrated into topbar
+- Added welcome banner to fleet view with "Welcome back, Marcus Chen", current date, last login info, and 3 quick-stat chips (24 Radios Online, 2 Alerts Active, All Systems Operational)
+- Enhanced fleet table with zebra striping (#11161f/#0e1219 alternating rows), amber-tinted hover effect, and amber left border on hover with smooth transitions
+- Fixed ESLint errors (components declared inside render moved to module scope)
+- All changes pass ESLint with zero errors
+
+---
+Task ID: r4
+Agent: Main
+Task: Fix critical React hydration mismatch error caused by Math.random() and Date.now()
+
+Work Log:
+- Root cause: `Math.random()` (34 occurrences) and `Date.now()` (2 occurrences) in `src/lib/nms-data/mock-data.ts` produced different values on server vs client during SSR/hydration
+- Added Mulberry32 seeded PRNG (`seededRandom`) with fixed seed 42 to mock-data.ts, ensuring deterministic output on server and client
+- Replaced `Date.now()` with fixed reference timestamp `NOW = 1745283200000` (2025-04-22T00:00:00Z)
+- Fixed all 34 `Math.random()` → `seededRandom()` replacements in mock-data.ts (radios, links, spectrum generators, helpers)
+- Fixed `Math.random()` in 3 view components (radio-detail-view.tsx, alerts-view.tsx, ota-view.tsx) using deterministic sin-hash function
+- All changes pass ESLint with zero errors
+- No type changes, no export changes, all data generation logic preserved
+
+Stage Summary:
+- Hydration mismatch fully resolved
+- Server and client now produce identical mock data

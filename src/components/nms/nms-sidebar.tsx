@@ -53,6 +53,70 @@ const TENANTS = [
   { id: 'charlie-team', label: 'Charlie Team' },
 ]
 
+// Hexagonal mesh SVG logo
+function MeshLogo() {
+  return (
+    <div className="relative flex items-center justify-center flex-shrink-0">
+      {/* Subtle glow effect behind the logo */}
+      <div
+        className="absolute inset-0 rounded-full blur-md opacity-40"
+        style={{ backgroundColor: '#f4a417' }}
+      />
+      <svg width="34" height="34" viewBox="0 0 40 40" fill="none" className="relative">
+        {/* Outer hexagon */}
+        <polygon
+          points="20,2 36,11 36,29 20,38 4,29 4,11"
+          stroke="#f4a417"
+          strokeWidth="1.5"
+          fill="rgba(244, 164, 23, 0.08)"
+        />
+        {/* Inner hexagon (smaller, offset) */}
+        <polygon
+          points="20,9 28,14 28,26 20,31 12,26 12,14"
+          stroke="#f4a417"
+          strokeWidth="1"
+          fill="rgba(244, 164, 23, 0.12)"
+          opacity="0.7"
+        />
+        {/* Center dot (mesh node) */}
+        <circle cx="20" cy="20" r="3" fill="#f4a417" opacity="0.9" />
+        {/* Connection lines to vertices (mesh pattern) */}
+        <line x1="20" y1="20" x2="20" y2="9" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
+        <line x1="20" y1="20" x2="28" y2="14" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
+        <line x1="20" y1="20" x2="28" y2="26" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
+        <line x1="20" y1="20" x2="20" y2="31" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
+        <line x1="20" y1="20" x2="12" y2="26" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
+        <line x1="20" y1="20" x2="12" y2="14" stroke="#f4a417" strokeWidth="0.8" opacity="0.5" />
+        {/* Corner dots (mesh nodes) */}
+        <circle cx="20" cy="9" r="1.5" fill="#f4a417" opacity="0.6" />
+        <circle cx="28" cy="14" r="1.5" fill="#f4a417" opacity="0.6" />
+        <circle cx="28" cy="26" r="1.5" fill="#f4a417" opacity="0.6" />
+        <circle cx="20" cy="31" r="1.5" fill="#f4a417" opacity="0.6" />
+        <circle cx="12" cy="26" r="1.5" fill="#f4a417" opacity="0.6" />
+        <circle cx="12" cy="14" r="1.5" fill="#f4a417" opacity="0.6" />
+      </svg>
+    </div>
+  )
+}
+
+// LIVE pulsing indicator
+function LiveIndicator() {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="relative flex items-center justify-center">
+        <span className="w-2 h-2 rounded-full bg-[#3ddc97]" />
+        <span className="absolute w-2 h-2 rounded-full bg-[#3ddc97] animate-ping opacity-75" />
+      </span>
+      <span
+        className="text-[9px] font-bold font-mono tracking-widest"
+        style={{ color: '#3ddc97' }}
+      >
+        LIVE
+      </span>
+    </div>
+  )
+}
+
 export function NMSSidebar() {
   const {
     currentView,
@@ -64,7 +128,6 @@ export function NMSSidebar() {
     setView,
     setTenant,
     toggleSidebar,
-    setSidebarCollapsed,
   } = useNMSStore()
 
   const [isMobile, setIsMobile] = useState(false)
@@ -73,12 +136,12 @@ export function NMSSidebar() {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768
       setIsMobile(mobile)
-      setSidebarCollapsed(mobile)
+      toggleSidebar()
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
-  }, [setSidebarCollapsed])
+  }, [toggleSidebar])
 
   const handleNavClick = useCallback(
     (viewId: NMSView) => {
@@ -99,16 +162,24 @@ export function NMSSidebar() {
   const navContent = (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-[#1a2230]">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#f4a417]/15 border border-[#f4a417]/30 flex-shrink-0">
-          <span className="font-mono text-sm font-bold text-[#f4a417]">DL</span>
+      <div className="flex flex-col gap-2 px-4 py-3 border-b border-[#1a2230]">
+        <div className="flex items-center gap-3">
+          <MeshLogo />
+          {!collapsed && (
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-[11px] font-bold tracking-[0.2em] uppercase" style={{ color: '#f4a417' }}>
+                DOODLE LABS
+              </span>
+              <span className="text-xs font-semibold tracking-wider" style={{ color: '#e7ecf4' }}>
+                FLEET NMS
+              </span>
+            </div>
+          )}
         </div>
         {!collapsed && (
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-xs font-semibold tracking-wider text-[#e7ecf4] uppercase">
-              Fleet NMS
-            </span>
-            <span className="text-[10px] font-mono text-[#6f7d93] tracking-wide">
+          <div className="flex items-center justify-between">
+            <LiveIndicator />
+            <span className="text-[10px] font-mono" style={{ color: '#4a5567' }}>
               v2.0
             </span>
           </div>

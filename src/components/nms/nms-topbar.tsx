@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import {
   Search,
   Bell,
@@ -9,6 +9,7 @@ import {
   LogOut,
   Settings,
   Building2,
+  Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -31,6 +32,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { useNMSStore, type NMSView } from '@/lib/nms-data/store'
+import { ConnectionStatus } from './connection-status'
 
 const VIEW_LABELS: Record<NMSView, string> = {
   fleet: 'Fleet Dashboard',
@@ -58,6 +60,33 @@ const TENANT_LABELS: Record<string, string> = {
   'alpha-fleet': 'Alpha Fleet',
   'bravo-unit': 'Bravo Unit',
   'charlie-team': 'Charlie Team',
+}
+
+function UTCClock() {
+  const [time, setTime] = useState<string>('')
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date()
+      const hours = String(now.getUTCHours()).padStart(2, '0')
+      const minutes = String(now.getUTCMinutes()).padStart(2, '0')
+      const seconds = String(now.getUTCSeconds()).padStart(2, '0')
+      setTime(`${hours}:${minutes}:${seconds}`)
+    }
+    updateClock()
+    const interval = setInterval(updateClock, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#11161f] border border-[#222b39]">
+      <Clock className="h-3.5 w-3.5" style={{ color: '#6f7d93' }} />
+      <span className="text-[11px] font-mono" style={{ color: '#6f7d93' }}>UTC</span>
+      <span className="text-xs font-mono font-medium tabular-nums" style={{ color: '#e7ecf4' }}>
+        {time}
+      </span>
+    </div>
+  )
 }
 
 export function NMSTopbar() {
@@ -125,6 +154,9 @@ export function NMSTopbar() {
       {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Connection Status */}
+      <ConnectionStatus />
+
       {/* Search */}
       <div className="relative hidden md:flex items-center w-64 lg:w-80">
         <Search className="absolute left-3 h-4 w-4 text-[#4a5567]" />
@@ -134,6 +166,9 @@ export function NMSTopbar() {
           className="pl-9 pr-4 h-8 text-xs bg-[#11161f] border-[#222b39] text-[#aeb8c8] placeholder:text-[#4a5567] rounded-md focus-visible:ring-[#f4a417]/30 focus-visible:border-[#f4a417]/50 font-mono"
         />
       </div>
+
+      {/* UTC Clock */}
+      <UTCClock />
 
       {/* Tenant Indicator */}
       <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#11161f] border border-[#222b39]">
