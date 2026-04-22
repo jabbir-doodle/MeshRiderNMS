@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Mesh Rider Fleet NMS Models ─────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  radios    Radio[]
+}
+
+model Radio {
+  id          String   @id @default(cuid())
+  callsign    String   @unique
+  mac         String   @unique
+  ip          String
+  state       String   @default("online")
+  formFactor  String
+  band        String
+  firmware    String
+  siteName    String
+  siteId      String
+  snr         Float    @default(0)
+  throughput  Float    @default(0)
+  txPower     Float    @default(0)
+  cpu         Float    @default(0)
+  temp        Float    @default(0)
+  battery     Float    @default(100)
+  configState String   @default("in-sync")
+  tenantId    String
+  lat         Float
+  lng         Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  severity    String
+  title       String
+  description String
+  site        String
+  rule        String
+  acknowledged Boolean  @default(false)
+  tenantId    String
+  createdAt   DateTime @default(now())
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  operator  String
+  action    String
+  actionType String
+  object    String
+  sourceIp  String
+  tenantId  String
+  createdAt DateTime @default(now())
+}
+
+model OTACampaign {
+  id        String   @id @default(cuid())
+  name      String
+  firmware  String
+  status    String
+  total     Int
+  completed Int      @default(0)
+  failed    Int      @default(0)
+  owner     String
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
