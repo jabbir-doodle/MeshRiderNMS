@@ -1,6 +1,7 @@
 // =============================================================================
 // Mesh Rider NMS — System Status Bar
 // Fixed bottom status bar with scrolling real-time metrics ticker
+// Responsive: simplified on mobile (UTC time only)
 // =============================================================================
 
 'use client';
@@ -48,81 +49,99 @@ export function SystemStatusBar() {
   // Double the metrics for seamless scrolling loop
   const doubledMetrics = [...metrics, ...metrics];
 
+  // ─── Mobile: simplified compact bar with just UTC time ───
   return (
-    <div
-      className="flex-shrink-0 flex items-center h-8 relative overflow-hidden"
-      style={{
-        backgroundColor: '#0d1118',
-        borderTop: '1px solid #1a2230',
-        borderLeft: '2px solid #f4a417',
-      }}
-    >
-      {/* Left: SYSTEM label */}
+    <>
+      {/* Mobile version */}
       <div
-        className="flex-shrink-0 flex items-center px-3 h-full z-10"
+        className="flex-shrink-0 flex md:hidden items-center justify-center h-7 relative overflow-hidden"
         style={{
           backgroundColor: '#0d1118',
-          borderRight: '1px solid #1a2230',
+          borderTop: '1px solid #1a2230',
+          borderLeft: '2px solid #f4a417',
         }}
       >
-        <span
-          className="text-[10px] font-bold font-mono tracking-[0.15em] uppercase"
-          style={{ color: COLORS.amber }}
-        >
-          System
-        </span>
-      </div>
-
-      {/* Scrolling metrics ticker */}
-      <div className="flex-1 overflow-hidden relative h-full flex items-center">
-        {/* Fade edges */}
-        <div
-          className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
-          style={{
-            background: 'linear-gradient(90deg, #0d1118, transparent)',
-          }}
-        />
-        <div
-          className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
-          style={{
-            background: 'linear-gradient(-90deg, #0d1118, transparent)',
-          }}
-        />
-        <div
-          className="flex items-center gap-6 h-full whitespace-nowrap status-ticker-scroll"
-        >
-          {doubledMetrics.map((m, i) => (
-            <div key={i} className="inline-flex items-center gap-1.5 flex-shrink-0">
-              <span
-                className="text-[10px] font-mono uppercase tracking-wider"
-                style={{ color: TEXT.tertiary }}
-              >
-                {m.label}
-              </span>
-              <span className="text-[10px] font-mono" style={{ color: TEXT.muted }}>:</span>
-              <span
-                className="text-[10px] font-mono font-semibold tabular-nums"
-                style={{ color: m.color }}
-              >
-                {m.value}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Right: UTC timestamp */}
-      <div
-        className="flex-shrink-0 flex items-center px-3 h-full z-10"
-        style={{
-          backgroundColor: '#0d1118',
-          borderLeft: '1px solid #1a2230',
-        }}
-      >
-        <span className="text-[10px] font-mono tabular-nums" style={{ color: TEXT.secondary }}>
+        <span className="text-[9px] font-mono tabular-nums" style={{ color: TEXT.tertiary }}>
           {utcTime}
         </span>
       </div>
-    </div>
+
+      {/* Desktop version */}
+      <div
+        className="hidden md:flex flex-shrink-0 items-center h-8 relative overflow-hidden"
+        style={{
+          backgroundColor: '#0d1118',
+          borderTop: '1px solid #1a2230',
+          borderLeft: '2px solid #f4a417',
+        }}
+      >
+        {/* Left: SYSTEM label */}
+        <div
+          className="flex-shrink-0 flex items-center px-3 h-full z-10"
+          style={{
+            backgroundColor: '#0d1118',
+            borderRight: '1px solid #1a2230',
+          }}
+        >
+          <span
+            className="text-[10px] font-bold font-mono tracking-[0.15em] uppercase"
+            style={{ color: COLORS.amber }}
+          >
+            System
+          </span>
+        </div>
+
+        {/* Scrolling metrics ticker */}
+        <div className="flex-1 overflow-hidden relative h-full flex items-center">
+          {/* Fade edges */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
+            style={{
+              background: 'linear-gradient(90deg, #0d1118, transparent)',
+            }}
+          />
+          <div
+            className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
+            style={{
+              background: 'linear-gradient(-90deg, #0d1118, transparent)',
+            }}
+          />
+          <div
+            className="flex items-center gap-6 h-full whitespace-nowrap status-ticker-scroll"
+          >
+            {doubledMetrics.map((m, i) => (
+              <div key={i} className="inline-flex items-center gap-1.5 flex-shrink-0">
+                <span
+                  className="text-[10px] font-mono uppercase tracking-wider"
+                  style={{ color: TEXT.tertiary }}
+                >
+                  {m.label}
+                </span>
+                <span className="text-[10px] font-mono" style={{ color: TEXT.muted }}>:</span>
+                <span
+                  className="text-[10px] font-mono font-semibold tabular-nums"
+                  style={{ color: m.color }}
+                >
+                  {m.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: UTC timestamp */}
+        <div
+          className="flex-shrink-0 flex items-center px-3 h-full z-10"
+          style={{
+            backgroundColor: '#0d1118',
+            borderLeft: '1px solid #1a2230',
+          }}
+        >
+          <span className="text-[10px] font-mono tabular-nums" style={{ color: TEXT.secondary }}>
+            {utcTime}
+          </span>
+        </div>
+      </div>
+    </>
   );
 }

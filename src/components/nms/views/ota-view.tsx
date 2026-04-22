@@ -66,7 +66,8 @@ function generateOTARows(campaign: OTACampaign): RadioOTARow[] {
 
   const stages = ['canary', 'stage25', 'stage50', 'full'];
   const stageIndex = stages.indexOf(campaign.stage);
-  const now = new Date();
+  // Use fixed NOW to avoid hydration mismatch
+  const now = new Date(1745283200000);
 
   const detRand = (i: number) => Math.abs(Math.sin((i + 3) * 12.9898 + 78.233) * 43758.5453) % 1
 
@@ -80,11 +81,13 @@ function generateOTARows(campaign: OTACampaign): RadioOTARow[] {
       state === 'rollback' ? 0 : 0;
 
     const minutesAgo = i * 3 + Math.floor(detRand(i + 100) * 5);
-    const started = new Date(now.getTime() - (minutesAgo + 10) * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const startH = Math.floor(((1745283200000 - (minutesAgo + 10) * 60000) % 86400000) / 3600000);
+    const startM = Math.floor(((1745283200000 - (minutesAgo + 10) * 60000) % 3600000) / 60000);
+    const started = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
     const finished = state === 'complete'
-      ? new Date(now.getTime() - minutesAgo * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+      ? (() => { const h = Math.floor(((1745283200000 - minutesAgo * 60000) % 86400000) / 3600000); const m = Math.floor(((1745283200000 - minutesAgo * 60000) % 3600000) / 60000); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; })()
       : state === 'failed'
-      ? new Date(now.getTime() - (minutesAgo + 2) * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+      ? (() => { const h = Math.floor(((1745283200000 - (minutesAgo + 2) * 60000) % 86400000) / 3600000); const m = Math.floor(((1745283200000 - (minutesAgo + 2) * 60000) % 3600000) / 60000); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; })()
       : '—';
 
     const result =
@@ -233,7 +236,7 @@ function StageProgressBar({ campaign }: { campaign: OTACampaign }) {
   const stageStatus = getStageStatus(campaign);
 
   return (
-    <div className="flex items-start gap-0">
+    <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-0">
       {STAGES.map((stage, idx) => {
         const status = stageStatus[stage.key];
         const isLast = idx === STAGES.length - 1;
@@ -245,9 +248,9 @@ function StageProgressBar({ campaign }: { campaign: OTACampaign }) {
         const lineColor = status === 'complete' ? COLORS.ok : BORDER.default;
 
         return (
-          <div key={stage.key} className="flex items-center flex-1 min-w-0">
+          <div key={stage.key} className="flex flex-col sm:flex-row sm:items-center flex-1 sm:min-w-0">
             {/* Circle + label */}
-            <div className="flex flex-col items-center gap-1.5 flex-shrink-0" style={{ minWidth: 56 }}>
+            <div className="flex flex-row sm:flex-col items-center gap-2 sm:gap-1.5 flex-shrink-0" style={{ minWidth: 56 }}>
               <div
                 className="flex items-center justify-center rounded-full transition-all duration-300"
                 style={{
@@ -275,11 +278,22 @@ function StageProgressBar({ campaign }: { campaign: OTACampaign }) {
               </span>
             </div>
 
-            {/* Connector line */}
+            {/* Connector line - vertical on mobile, horizontal on desktop */}
             {!isLast && (
-              <div className="flex-1 flex items-center justify-center" style={{ marginTop: -16 }}>
+              <div className="sm:flex-1 sm:flex sm:items-center sm:justify-center hidden sm:block" style={{ marginTop: -16 }}>
                 <div
-                  className="w-full max-w-[80px] h-1 rounded-full transition-all duration-500"
+                  className="w-full max-w-[80px] h-1 rounded-full transition-all duration-500 hidden sm:block"
+                  style={{
+                    backgroundColor: lineColor,
+                    opacity: status === 'complete' ? 0.8 : 0.3,
+                  }}
+                />
+              </div>
+            )}
+            {!isLast && (
+              <div className="flex sm:hidden justify-start ml-4 sm:ml-0 py-0.5">
+                <div
+                  className="w-1 h-4 rounded-full transition-all duration-500"
                   style={{
                     backgroundColor: lineColor,
                     opacity: status === 'complete' ? 0.8 : 0.3,

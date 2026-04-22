@@ -13,6 +13,7 @@ import {
   ChevronsRight,
   ChevronDown,
   Radio,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -103,12 +104,14 @@ export function NMSSidebar() {
     currentView,
     selectedTenant,
     sidebarCollapsed,
+    mobileMenuOpen,
     alertCount,
     onlineRadios,
     totalRadios,
     setView,
     setTenant,
     toggleSidebar,
+    setMobileMenuOpen,
   } = useNMSStore()
 
   const [isMobile, setIsMobile] = useState(false)
@@ -118,12 +121,25 @@ export function NMSSidebar() {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768
       setIsMobile(mobile)
-      toggleSidebar()
+      if (mobile && !sidebarCollapsed) {
+        toggleSidebar()
+      }
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
-  }, [toggleSidebar])
+  }, [sidebarCollapsed, toggleSidebar])
+
+  // Close mobile menu on escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [mobileMenuOpen, setMobileMenuOpen])
 
   const handleNavClick = useCallback(
     (viewId: NMSView) => {
@@ -161,6 +177,16 @@ export function NMSSidebar() {
                 MESH RIDER NMS
               </span>
             </div>
+          )}
+          {/* Close button on mobile */}
+          {isMobile && (
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="ml-auto flex items-center justify-center w-8 h-8 rounded-md text-[#6f7d93] hover:text-[#aeb8c8] hover:bg-[#161c27] transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
           )}
         </div>
         {/* Subtle divider */}
@@ -275,25 +301,56 @@ export function NMSSidebar() {
         )}
       </div>
 
-      {/* Collapse Toggle */}
-      <button
-        onClick={toggleSidebar}
-        className="flex items-center justify-center w-full h-10 border-t border-[#1a2230] text-[#4a5567] hover:text-[#aeb8c8] hover:bg-[#161c27] transition-colors"
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {collapsed ? (
-          <ChevronsRight className="h-4 w-4" />
-        ) : (
-          <div className="flex items-center gap-2">
-            <ChevronsLeft className="h-4 w-4" />
-            <span className="text-xs">Collapse</span>
-          </div>
-        )}
-      </button>
+      {/* Collapse Toggle - only on desktop */}
+      {!isMobile && (
+        <button
+          onClick={toggleSidebar}
+          className="flex items-center justify-center w-full h-10 border-t border-[#1a2230] text-[#4a5567] hover:text-[#aeb8c8] hover:bg-[#161c27] transition-colors"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? (
+            <ChevronsRight className="h-4 w-4" />
+          ) : (
+            <div className="flex items-center gap-2">
+              <ChevronsLeft className="h-4 w-4" />
+              <span className="text-xs">Collapse</span>
+            </div>
+          )}
+        </button>
+      )}
     </div>
   )
 
-  // Render with tooltips when collapsed
+  // ─── Mobile: Slide-over drawer with backdrop ───
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop overlay */}
+        {mobileMenuOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Drawer */}
+        <aside
+          className={cn(
+            'fixed inset-y-0 left-0 z-50 w-[280px] bg-[#0b0f16] border-r border-[#1a2230] flex flex-col transition-transform duration-300 ease-in-out',
+            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          )}
+          style={{
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
+        >
+          {navContent}
+        </aside>
+      </>
+    )
+  }
+
+  // ─── Desktop: Collapsible sidebar ───
   if (collapsed) {
     return (
       <TooltipProvider delayDuration={200}>

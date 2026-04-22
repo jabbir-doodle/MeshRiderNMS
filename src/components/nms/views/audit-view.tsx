@@ -28,7 +28,7 @@ export default function AuditView() {
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 flex-wrap px-5 pt-4 pb-2">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap px-4 sm:px-5 pt-4 pb-2">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-medium text-[#e7ecf4] whitespace-nowrap">Audit Log</h1>
@@ -48,7 +48,7 @@ export default function AuditView() {
             placeholder="Filter by user, action, object…"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="bg-transparent border-0 outline-none text-xs text-[#e7ecf4] w-60 font-mono placeholder:text-[#4a5567]"
+            className="bg-transparent border-0 outline-none text-xs text-[#e7ecf4] w-40 sm:w-60 font-mono placeholder:text-[#4a5567]"
           />
         </div>
         <button className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-[#222b39] bg-[#161c27] text-[#aeb8c8] hover:bg-[#1c2430] transition-colors">

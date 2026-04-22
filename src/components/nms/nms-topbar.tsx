@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useMemo, useState, useEffect, useRef } from 'react'
+import React, { useMemo, useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useMounted } from '@/hooks/use-mounted'
 import {
   Search,
   Bell,
@@ -12,6 +13,7 @@ import {
   Clock,
   CheckCheck,
   ArrowRight,
+  Menu,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -67,7 +69,8 @@ const TENANT_LABELS: Record<string, string> = {
 }
 
 function UTCClock() {
-  const [time, setTime] = useState<string>('')
+  const [time, setTime] = useState<string>('--:--:--')
+  const mounted = useMounted()
 
   useEffect(() => {
     const updateClock = () => {
@@ -83,7 +86,7 @@ function UTCClock() {
   }, [])
 
   return (
-    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#11161f] border border-[#222b39]">
+    <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#11161f] border border-[#222b39]">
       <Clock className="h-3.5 w-3.5" style={{ color: '#6f7d93' }} />
       <span className="text-[11px] font-mono" style={{ color: '#6f7d93' }}>UTC</span>
       <span className="text-xs font-mono font-medium tabular-nums" style={{ color: '#e7ecf4' }}>
@@ -103,7 +106,8 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 // ─── Time ago helper ───────────────────────────────────────────────────────
 
-function timeAgo(isoString: string): string {
+function timeAgo(isoString: string, mounted: boolean): string {
+  if (!mounted) return '…'
   const now = Date.now()
   const then = new Date(isoString).getTime()
   const diffMs = now - then
@@ -114,7 +118,9 @@ function timeAgo(isoString: string): string {
   if (diffHrs < 24) return `${diffHrs}h ago`
   const diffDays = Math.floor(diffHrs / 24)
   if (diffDays < 7) return `${diffDays}d ago`
-  return new Date(isoString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const d = new Date(isoString)
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`
 }
 
 // ─── Notification Dropdown ─────────────────────────────────────────────────
@@ -123,6 +129,7 @@ function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false)
   const [localNotifs, setLocalNotifs] = useState<Notification[]>(notifications)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const mounted = useMounted()
 
   const unreadCount = localNotifs.filter((n) => !n.read).length
 
@@ -157,7 +164,7 @@ function NotificationDropdown() {
       {/* Trigger button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex items-center justify-center w-8 h-8 rounded-md text-[#6f7d93] hover:text-[#aeb8c8] hover:bg-[#161c27] transition-colors"
+        className="relative flex items-center justify-center w-9 h-9 rounded-md text-[#6f7d93] hover:text-[#aeb8c8] hover:bg-[#161c27] transition-colors"
         aria-label="Notifications"
       >
         <Bell className="h-4 w-4" />
@@ -176,7 +183,7 @@ function NotificationDropdown() {
         <div
           className="absolute right-0 top-full mt-2 z-50"
           style={{
-            width: 360,
+            width: 'min(360px, calc(100vw - 32px))',
             maxHeight: 420,
             backgroundColor: 'rgba(17, 22, 31, 0.95)',
             backdropFilter: 'blur(20px)',
@@ -281,7 +288,7 @@ function NotificationDropdown() {
                       className="text-[10px] font-mono mt-1 block"
                       style={{ color: '#4a5567' }}
                     >
-                      {timeAgo(notif.timestamp)}
+                      {timeAgo(notif.timestamp, mounted)}
                     </span>
                   </div>
                 </div>
@@ -328,13 +335,83 @@ function ViewAllAlertsButton() {
   )
 }
 
+// ─── Mobile Search Dialog ──────────────────────────────────────────────────
+
+function MobileSearchDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [query, setQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      const t = setTimeout(() => inputRef.current?.focus(), 100)
+      return () => clearTimeout(t)
+    }
+  }, [open])
+
+  const handleClose = useCallback(() => {
+    setQuery('')
+    onClose()
+  }, [onClose])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) handleClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, handleClose])
+
+  if (!open) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 md:hidden"
+      onClick={handleClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="absolute top-0 left-0 right-0 p-3 pt-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="flex items-center gap-2 rounded-xl overflow-hidden"
+          style={{
+            backgroundColor: '#11161f',
+            border: '1px solid #222b39',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          }}
+        >
+          <div className="pl-3">
+            <Search className="h-4 w-4" style={{ color: '#6f7d93' }} />
+          </div>
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search radios, IPs, callsigns..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="flex-1 py-3 pr-3 text-sm bg-transparent text-[#e7ecf4] placeholder:text-[#4a5567] outline-none font-mono"
+          />
+          <button
+            onClick={onClose}
+            className="px-3 py-3 text-xs font-medium text-[#6f7d93] hover:text-[#aeb8c8] border-l border-[#222b39]"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Topbar ─────────────────────────────────────────────────────────────────
 
 export function NMSTopbar() {
-  const { currentView, selectedTenant, selectedRadioId, alertCount, setView, selectRadio } =
+  const { currentView, selectedTenant, selectedRadioId, alertCount, setView, selectRadio, setMobileMenuOpen } =
     useNMSStore()
 
   const [searchFocused, setSearchFocused] = useState(false)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   const breadcrumbItems = useMemo(() => {
     const items: { label: string; view?: NMSView; isCurrent?: boolean }[] = []
@@ -364,128 +441,149 @@ export function NMSTopbar() {
   }
 
   return (
-    <header className="relative flex items-center h-14 px-4 bg-[#0b0f16] border-b border-[#1a2230] gap-4 flex-shrink-0">
-      {/* Bottom gradient line (amber glow) */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-px"
-        style={{
-          background: 'linear-gradient(90deg, transparent 0%, #f4a41733 20%, #f4a41766 50%, #f4a41733 80%, transparent 100%)',
-        }}
-      />
-
-      {/* Breadcrumb */}
-      <Breadcrumb className="flex-shrink-0">
-        <BreadcrumbList>
-          {breadcrumbItems.map((item, index) => (
-            <React.Fragment key={`${item.label}-${index}`}>
-              {index > 0 && (
-                <BreadcrumbSeparator>
-                  <ChevronRight className="h-3 w-3 text-[#4a5567]" />
-                </BreadcrumbSeparator>
-              )}
-              <BreadcrumbItem>
-                {item.isCurrent ? (
-                  <BreadcrumbPage className="text-[#e7ecf4] text-sm font-medium">
-                    {item.label}
-                  </BreadcrumbPage>
-                ) : (
-                  <BreadcrumbLink
-                    onClick={() => item.view && handleBreadcrumbClick(item.view)}
-                    className="text-[#6f7d93] hover:text-[#aeb8c8] transition-colors cursor-pointer text-sm"
-                  >
-                    {item.label}
-                  </BreadcrumbLink>
-                )}
-              </BreadcrumbItem>
-            </React.Fragment>
-          ))}
-        </BreadcrumbList>
-      </Breadcrumb>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Connection Status */}
-      <ConnectionStatus />
-
-      {/* Search */}
-      <div className={cn(
-        'relative hidden md:flex items-center w-64 lg:w-80 transition-all duration-200 rounded-md',
-        searchFocused && 'ring-1',
-      )}
-        style={{
-          ringColor: searchFocused ? 'rgba(244, 164, 23, 0.3)' : undefined,
-          boxShadow: searchFocused
-            ? '0 0 0 2px rgba(244, 164, 23, 0.2), 0 0 20px rgba(244, 164, 23, 0.06)'
-            : 'none',
-        }}
-      >
-        <Search
-          className="absolute left-3 h-4 w-4 transition-colors duration-200"
-          style={{ color: searchFocused ? '#f4a417' : '#4a5567' }}
-        />
-        <Input
-          type="text"
-          placeholder="Search radios, IPs, callsigns..."
-          className="pl-9 pr-4 h-8 text-xs bg-[#11161f] text-[#aeb8c8] placeholder:text-[#4a5567] rounded-md font-mono transition-colors duration-200"
+    <>
+      <header className="relative flex items-center h-14 px-3 sm:px-4 bg-[#0b0f16] border-b border-[#1a2230] gap-2 sm:gap-4 flex-shrink-0">
+        {/* Bottom gradient line (amber glow) */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-px"
           style={{
-            borderColor: searchFocused ? 'rgba(244, 164, 23, 0.5)' : '#222b39',
-            boxShadow: 'none',
+            background: 'linear-gradient(90deg, transparent 0%, #f4a41733 20%, #f4a41766 50%, #f4a41733 80%, transparent 100%)',
           }}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
         />
-      </div>
 
-      {/* UTC Clock */}
-      <UTCClock />
-
-      {/* Tenant Indicator */}
-      <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#11161f] border border-[#222b39]">
-        <Building2 className="h-3.5 w-3.5 text-[#f4a417]" />
-        <span className="text-xs font-mono text-[#aeb8c8]">{tenantLabel}</span>
-      </div>
-
-      {/* Notifications Dropdown */}
-      <NotificationDropdown />
-
-      {/* User Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2 rounded-md p-1 hover:bg-[#161c27] transition-all duration-200 cursor-pointer hover-ring">
-            <Avatar className="h-7 w-7 ring-1 ring-transparent hover:ring-[#f4a41733] transition-all duration-200">
-              <AvatarFallback className="bg-[#f4a417]/15 text-[#f4a417] text-[10px] font-mono font-bold border border-[#f4a417]/20">
-                JB
-              </AvatarFallback>
-            </Avatar>
-            <span className="hidden lg:block text-xs font-medium text-[#aeb8c8]">Jabbir</span>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="w-48 bg-[#161c27] border-[#2c3647] text-[#aeb8c8]"
+        {/* Hamburger menu button (mobile only) */}
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="flex md:hidden items-center justify-center w-9 h-9 rounded-md text-[#6f7d93] hover:text-[#aeb8c8] hover:bg-[#161c27] transition-colors"
+          aria-label="Open navigation menu"
         >
-          <DropdownMenuLabel className="text-[#e7ecf4] text-xs font-mono">
-            jabbir@doodlelabs.com
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-[#222b39]" />
-          <DropdownMenuGroup>
-            <DropdownMenuItem className="text-[#aeb8c8] focus:bg-[#1c2430] focus:text-[#e7ecf4] cursor-pointer">
-              <User className="mr-2 h-4 w-4" />
-              Profile
+          <Menu className="h-5 w-5" />
+        </button>
+
+        {/* Breadcrumb - truncate on mobile */}
+        <Breadcrumb className="flex-shrink-0 min-w-0">
+          <BreadcrumbList>
+            {breadcrumbItems.map((item, index) => (
+              <React.Fragment key={`${item.label}-${index}`}>
+                {index > 0 && (
+                  <BreadcrumbSeparator>
+                    <ChevronRight className="h-3 w-3 text-[#4a5567]" />
+                  </BreadcrumbSeparator>
+                )}
+                <BreadcrumbItem>
+                  {item.isCurrent ? (
+                    <BreadcrumbPage className="text-[#e7ecf4] text-sm font-medium truncate max-w-[120px] sm:max-w-none">
+                      {item.label}
+                    </BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink
+                      onClick={() => item.view && handleBreadcrumbClick(item.view)}
+                      className="text-[#6f7d93] hover:text-[#aeb8c8] transition-colors cursor-pointer text-sm truncate max-w-[100px] sm:max-w-none"
+                    >
+                      {item.label}
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </React.Fragment>
+            ))}
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        {/* Spacer */}
+        <div className="flex-1 min-w-0" />
+
+        {/* Connection Status - hidden on mobile */}
+        <ConnectionStatus />
+
+        {/* Search - hidden on mobile, icon shown instead */}
+        <button
+          onClick={() => setMobileSearchOpen(true)}
+          className="flex md:hidden items-center justify-center w-9 h-9 rounded-md text-[#6f7d93] hover:text-[#aeb8c8] hover:bg-[#161c27] transition-colors"
+          aria-label="Search"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+        <div className={cn(
+          'relative hidden md:flex items-center w-64 lg:w-80 transition-all duration-200 rounded-md',
+          searchFocused && 'ring-1',
+        )}
+          style={{
+            ringColor: searchFocused ? 'rgba(244, 164, 23, 0.3)' : undefined,
+            boxShadow: searchFocused
+              ? '0 0 0 2px rgba(244, 164, 23, 0.2), 0 0 20px rgba(244, 164, 23, 0.06)'
+              : 'none',
+          }}
+        >
+          <Search
+            className="absolute left-3 h-4 w-4 transition-colors duration-200"
+            style={{ color: searchFocused ? '#f4a417' : '#4a5567' }}
+          />
+          <Input
+            type="text"
+            placeholder="Search radios, IPs, callsigns..."
+            className="pl-9 pr-4 h-8 text-xs bg-[#11161f] text-[#aeb8c8] placeholder:text-[#4a5567] rounded-md font-mono transition-colors duration-200"
+            style={{
+              borderColor: searchFocused ? 'rgba(244, 164, 23, 0.5)' : '#222b39',
+              boxShadow: 'none',
+            }}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+          />
+        </div>
+
+        {/* UTC Clock - hidden on small screens */}
+        <UTCClock />
+
+        {/* Tenant Indicator - hidden on small screens */}
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#11161f] border border-[#222b39]">
+          <Building2 className="h-3.5 w-3.5 text-[#f4a417]" />
+          <span className="text-xs font-mono text-[#aeb8c8]">{tenantLabel}</span>
+        </div>
+
+        {/* Notifications Dropdown */}
+        <NotificationDropdown />
+
+        {/* User Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 rounded-md p-1 hover:bg-[#161c27] transition-all duration-200 cursor-pointer hover-ring">
+              <Avatar className="h-7 w-7 ring-1 ring-transparent hover:ring-[#f4a41733] transition-all duration-200">
+                <AvatarFallback className="bg-[#f4a417]/15 text-[#f4a417] text-[10px] font-mono font-bold border border-[#f4a417]/20">
+                  JB
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden lg:block text-xs font-medium text-[#aeb8c8]">Jabbir</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-48 bg-[#161c27] border-[#2c3647] text-[#aeb8c8]"
+          >
+            <DropdownMenuLabel className="text-[#e7ecf4] text-xs font-mono">
+              jabbir@doodlelabs.com
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-[#222b39]" />
+            <DropdownMenuGroup>
+              <DropdownMenuItem className="text-[#aeb8c8] focus:bg-[#1c2430] focus:text-[#e7ecf4] cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-[#aeb8c8] focus:bg-[#1c2430] focus:text-[#e7ecf4] cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                Preferences
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator className="bg-[#222b39]" />
+            <DropdownMenuItem className="text-[#ff5470] focus:bg-[#ff5470]/10 focus:text-[#ff5470] cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-[#aeb8c8] focus:bg-[#1c2430] focus:text-[#e7ecf4] cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              Preferences
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator className="bg-[#222b39]" />
-          <DropdownMenuItem className="text-[#ff5470] focus:bg-[#ff5470]/10 focus:text-[#ff5470] cursor-pointer">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </header>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </header>
+
+      {/* Mobile Search Dialog */}
+      <MobileSearchDialog open={mobileSearchOpen} onClose={() => setMobileSearchOpen(false)} />
+    </>
   )
 }

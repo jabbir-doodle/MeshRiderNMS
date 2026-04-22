@@ -355,3 +355,39 @@ Stage Summary:
 - New component: system-status-bar.tsx
 - Enhanced: topology-view, ota-view, fleet-view, nms-utils, globals.css, nms-layout
 - Zero ESLint errors
+
+---
+Task ID: phase4-responsive-hydration
+Agent: Main
+Task: Fix hydration errors, make responsive/mobile-friendly, update Doodle Labs product data
+
+Work Log:
+- Created useMounted hook using useSyncExternalStore (SSR-safe, no useEffect needed)
+- Fixed hydration mismatch in nms-topbar.tsx: timeAgo() now takes mounted parameter, returns '…' on server
+- Fixed UTCClock in nms-topbar.tsx: uses '--:--:--' default instead of empty string
+- Fixed fleet-view.tsx currentDate: moved from useMemo(new Date()) to useState + useEffect
+- Fixed fleet-view.tsx formatLastSeen: uses fixed NOW timestamp (1745283200000) instead of Date.now()
+- Fixed radio-detail-view.tsx: Enrolled/CertExpires use string comparison, EventsTab uses ISO split, SecurityTab uses fixed NOW
+- Fixed ota-view.tsx: uses fixed NOW timestamp and manual HH:MM formatting instead of toLocaleTimeString
+- Fixed system-status-bar.tsx: hidden on mobile (sm breakpoint), simplified to UTC-only mobile bar
+- Fixed useCallback import missing in nms-topbar.tsx
+- Updated mock-data.ts firmware versions: EW Resilience 2026-03, MR-OS v7.2.1, v7.2.0, v7.3.0-rc1, v7.1.8
+- Updated agent versions: 3.9.2, 3.9.0, 3.8.1, 3.9.1-rc1, 3.8.0
+- Updated config templates: added meshrider-sense-auto-v1
+- Updated OTA campaigns: EW Resilience 2026-03 rollout, Agent v3.9.2 test, SENSE Auto-Config, Legacy 2J/2K Deprecation
+- Updated alerts: SENSE Interference Avoidance alert, MR-OS v7.1.8 EOL warning, updated notification content
+- Updated fleet-view welcome banner: "Mesh Rider OS EW Resilience 2026-03" badge
+- Responsive: sidebar already has mobile drawer with backdrop overlay, close button, safe-area-inset, escape key
+- Responsive: topbar has hamburger menu (mobile), mobile search dialog, hidden clock/tenant on small screens
+- Responsive: system status bar hidden on mobile
+- Responsive: notification dropdown uses min(360px, calc(100vw - 32px)) for mobile
+- Responsive: breadcrumb truncates on mobile
+- Added comprehensive mobile CSS: hidden scrollbars, touch-friendly min sizes, overscroll-behavior, no text selection on buttons
+- QA tested all views via agent-browser — 200 OK on all
+
+Stage Summary:
+- All React hydration errors resolved (Date.now(), new Date(), toLocaleDateString, toLocaleTimeString)
+- Doodle Labs product data aligned with techlibrary.doodlelabs.com (SENSE, EW Resilience, 2J/2K legacy)
+- Mobile-responsive: sidebar drawer, hamburger menu, mobile search, responsive status bar, truncated breadcrumbs
+- Zero ESLint errors
+- Dev server responding 200 OK on all views

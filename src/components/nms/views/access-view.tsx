@@ -11,7 +11,7 @@ export default function AccessView() {
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 flex-wrap px-5 pt-4 pb-2">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap px-4 sm:px-5 pt-4 pb-2">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-medium text-[#e7ecf4] whitespace-nowrap">Access & Security</h1>

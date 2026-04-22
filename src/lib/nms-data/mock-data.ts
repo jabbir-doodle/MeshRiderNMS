@@ -175,9 +175,9 @@ const siteMeta = [
 
 const formFactors: RadioFormFactor[] = ['Nano²', 'Mini', 'OEM', 'Boost', 'Wearable'];
 const bands: RadioBand[] = ['L-Band', 'S-Band', 'C-Band', 'L+S Band', 'L+S+C Band'];
-const firmwareVersions = ['MR-OS v7.2.1', 'MR-OS v7.2.0', 'MR-OS v7.1.8', 'MR-OS v7.3.0-rc1', 'MR-OS v7.1.5'];
-const agentVersions = ['3.8.1', '3.8.0', '3.7.4', '3.9.0-rc1', '3.7.3'];
-const configTemplates = ['meshrider-default-v3', 'meshrider-high-gain-v2', 'meshrider-low-power-v1', 'meshrider-backbone-v2', 'meshrider-edge-v1'];
+const firmwareVersions = ['EW Resilience 2026-03', 'MR-OS v7.2.1', 'MR-OS v7.2.0', 'MR-OS v7.3.0-rc1', 'MR-OS v7.1.8'];
+const agentVersions = ['3.9.2', '3.9.0', '3.8.1', '3.9.1-rc1', '3.8.0'];
+const configTemplates = ['meshrider-default-v3', 'meshrider-high-gain-v2', 'meshrider-low-power-v1', 'meshrider-backbone-v2', 'meshrider-sense-auto-v1'];
 const states: RadioState[] = ['online', 'online', 'online', 'online', 'online', 'online', 'online', 'online', 'degraded', 'degraded', 'offline', 'error'];
 
 function randomPick<T>(arr: readonly T[]): T {
@@ -433,8 +433,8 @@ export const operators: Operator[] = [
 export const otaCampaigns: OTACampaign[] = [
   {
     id: 'ota-001',
-    name: 'Mesh Rider OS v7.3.0 Staged Rollout',
-    firmware: 'MR-OS v7.3.0-rc1',
+    name: 'EW Resilience 2026-03 Staged Rollout',
+    firmware: 'EW Resilience 2026-03',
     status: 'active',
     total: 18,
     completed: 12,
@@ -445,8 +445,8 @@ export const otaCampaigns: OTACampaign[] = [
   },
   {
     id: 'ota-002',
-    name: 'Agent v3.9.0 Canary Test',
-    firmware: 'v3.9.0-rc1',
+    name: 'Agent v3.9.2 Canary Test',
+    firmware: 'v3.9.2',
     status: 'active',
     total: 24,
     completed: 2,
@@ -457,7 +457,7 @@ export const otaCampaigns: OTACampaign[] = [
   },
   {
     id: 'ota-003',
-    name: 'Security Patch MR-OS v7.2.1-hotfix',
+    name: 'MR-OS v7.2.1 Security Hotfix',
     firmware: 'MR-OS v7.2.1',
     status: 'done',
     total: 24,
@@ -469,7 +469,7 @@ export const otaCampaigns: OTACampaign[] = [
   },
   {
     id: 'ota-004',
-    name: 'Config Template Sync v3',
+    name: 'SENSE Auto-Config Template Sync',
     firmware: 'MR-OS v7.2.0',
     status: 'scheduled',
     total: 10,
@@ -481,8 +481,8 @@ export const otaCampaigns: OTACampaign[] = [
   },
   {
     id: 'ota-005',
-    name: 'Legacy Radio Deprecation',
-    firmware: 'MR-OS v7.1.5',
+    name: 'Legacy Radio (2J/2K) Deprecation',
+    firmware: 'May 2023 LTS',
     status: 'failed',
     total: 6,
     completed: 2,
@@ -512,8 +512,8 @@ export const alerts: Alert[] = [
   {
     id: 2,
     severity: 'critical',
-    title: 'Possible Jamming Detected — Site Charlie',
-    description: 'Broadband interference detected at 2.44 GHz with duty cycle >85%. Mesh throughput dropped 40% on 3 radio links. Source direction: SW sector.',
+    title: 'SENSE Interference Avoidance Triggered — Site Charlie',
+    description: 'SENSE engine automatically switched Channel 11→6 at Site Charlie. Broadband interference at 2.44 GHz detected. Mesh throughput restored to 95%.',
     site: 'Charlie',
     timestamp: relativeTime(12),
     rule: 'spectrum.jammer.detected',
@@ -590,8 +590,8 @@ export const alerts: Alert[] = [
   {
     id: 8,
     severity: 'warning',
-    title: 'Mesh Rider OS v7.1.5 EOL Warning',
-    description: '6 radios on MR-OS v7.1.5 (EOL). No security patches after 2025-03-01. Schedule upgrade to MR-OS v7.2.1+.',
+    title: 'MR-OS v7.1.8 EOL Warning',
+    description: '6 radios on MR-OS v7.1.8 (EOL). No security patches after 2025-06-01. Schedule upgrade to EW Resilience 2026-03.',
     site: 'Echo, Delta',
     timestamp: relativeTime(1440),
     rule: 'firmware.eol.warning',
@@ -604,7 +604,7 @@ export const alerts: Alert[] = [
     id: 9,
     severity: 'info',
     title: 'OTA Campaign ota-003 Completed',
-    description: 'Security Patch MR-OS v7.2.1-hotfix campaign completed. 23/24 radios updated successfully. 1 failure (MR-009-D offline).',
+    description: 'MR-OS v7.2.1 Security Hotfix campaign completed. 23/24 radios updated successfully. 1 failure (MR-009-D offline).',
     site: 'All Sites',
     timestamp: relativeTime(2880),
     rule: 'ota.campaign.done',
@@ -802,10 +802,10 @@ export const spectrumEvents: SpectrumEvent[] = [
 
 export const notifications: Notification[] = [
   { id: 1, severity: 'critical', title: 'Radio MR-009-D Offline', description: 'No heartbeat for 45 min at Site Bravo.', timestamp: relativeTime(45), read: false, scope: 'site-bravo' },
-  { id: 2, severity: 'critical', title: 'Jamming Detected — Charlie', description: 'Interference at 2.44 GHz, duty cycle >85%.', timestamp: relativeTime(62), read: false, scope: 'site-charlie' },
+  { id: 2, severity: 'critical', title: 'SENSE Avoidance — Charlie', description: 'Auto-switched Ch 11→6 due to interference.', timestamp: relativeTime(62), read: false, scope: 'site-charlie' },
   { id: 3, severity: 'warning', title: 'CPU Thermal Throttle', description: 'MR-017-C exceeded 72°C threshold.', timestamp: relativeTime(78), read: true, scope: 'site-charlie' },
   { id: 4, severity: 'warning', title: 'Config Drift — MR-014-A', description: 'Channel width mismatch detected.', timestamp: relativeTime(120), read: true, scope: 'site-alpha' },
-  { id: 5, severity: 'info', title: 'OTA Campaign ota-003 Done', description: '23/24 radios updated successfully.', timestamp: relativeTime(2880), read: true, scope: 'global' },
+  { id: 5, severity: 'info', title: 'EW Resilience Rollout 50%', description: '12/18 radios updated to EW Resilience 2026-03.', timestamp: relativeTime(2880), read: true, scope: 'global' },
   { id: 6, severity: 'warning', title: 'SNR Degradation', description: 'Link MR-005→MR-006 dropped to 14dB.', timestamp: relativeTime(95), read: true, scope: 'site-bravo' },
   { id: 7, severity: 'info', title: 'Radio MR-024-D Enrolled', description: 'New Boost radio at Site Delta.', timestamp: relativeTime(600), read: true, scope: 'site-delta' },
 ];

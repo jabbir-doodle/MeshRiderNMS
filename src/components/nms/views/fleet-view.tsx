@@ -554,15 +554,17 @@ export default function FleetView() {
   // Reset page when filters change
   React.useEffect(() => { setPage(0); }, [siteFilter, stateFilter, searchQuery]);
 
-  // Format current date for welcome banner
-  const currentDate = useMemo(() => {
+  // Format current date for welcome banner — use mounted to avoid hydration mismatch
+  const [currentDate, setCurrentDate] = useState('Loading...')
+  const mounted = React.useState(false)[0]
+  React.useEffect(() => {
     const now = new Date()
-    return now.toLocaleDateString('en-US', {
+    setCurrentDate(now.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-    })
+    }))
   }, [])
 
   return (
@@ -591,7 +593,7 @@ export default function FleetView() {
             background: `linear-gradient(180deg, ${COLORS.amber}, ${COLORS.cyan}88, ${COLORS.amber})`,
           }}
         />
-        <div className="relative px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="relative px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold" style={{ color: TEXT.primary }}>
@@ -609,7 +611,7 @@ export default function FleetView() {
                   border: '1px solid #2dd4ff25',
                 }}
               >
-                Mesh Rider OS v7.2.1
+                Mesh Rider OS EW Resilience 2026-03
               </span>
               <span>·</span>
               <span>Last login: 2 minutes ago</span>
@@ -767,7 +769,7 @@ export default function FleetView() {
       </div>
 
       {/* ── KPI Strip ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         <KPICard
           label="Total Radios"
           value={stats.total}
@@ -835,13 +837,13 @@ export default function FleetView() {
         />
 
         {/* Table wrapper with horizontal scroll */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overscroll-contain">
           <table className="w-full text-xs" style={{ minWidth: 900 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${BORDER.default}` }}>
                 {([
-                  { key: 'state' as SortKey, label: 'Status', w: 'w-20' },
-                  { key: 'callsign' as SortKey, label: 'Callsign', w: 'w-32' },
+                  { key: 'state' as SortKey, label: 'Status', w: 'w-16 sm:w-20' },
+                  { key: 'callsign' as SortKey, label: 'Callsign', w: 'w-24 sm:w-32' },
                   { key: 'siteName' as SortKey, label: 'Site', w: 'w-24' },
                   { key: null as SortKey, label: 'Band', w: 'w-28' },
                   { key: null as SortKey, label: 'Form Factor', w: 'w-24' },
@@ -887,12 +889,12 @@ export default function FleetView() {
                   onClick={() => selectRadio(radio.id)}
                 >
                   {/* Status */}
-                  <td className="px-3 py-2.5">
+                  <td className="px-2 sm:px-3 py-2.5 sticky left-0 z-10 bg-inherit">
                     <StatusDot status={radio.state} size="md" pulse />
                   </td>
 
                   {/* Callsign */}
-                  <td className="px-3 py-2.5">
+                  <td className="px-2 sm:px-3 py-2.5 sticky left-[32px] sm:left-[48px] z-10 bg-inherit">
                     <span className="font-semibold font-mono" style={{ color: TEXT.primary }}>
                       {radio.callsign}
                     </span>
@@ -1026,8 +1028,9 @@ export default function FleetView() {
 function formatLastSeen(isoString: string): string {
   try {
     const date = new Date(isoString);
-    const now = Date.now();
-    const diffMs = now - date.getTime();
+    // Use the fixed NOW timestamp from mock-data to avoid hydration mismatch
+    const NOW = 1745283200000;
+    const diffMs = NOW - date.getTime();
     const diffMin = Math.floor(diffMs / 60_000);
 
     if (diffMin < 1) return 'just now';

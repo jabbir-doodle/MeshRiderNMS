@@ -19,6 +19,7 @@ interface NMSState {
   // Navigation
   currentView: NMSView;
   sidebarCollapsed: boolean;
+  mobileMenuOpen: boolean;
 
   // Selection
   selectedRadioId: number | null;
@@ -39,6 +40,7 @@ interface NMSState {
   // Actions — Navigation
   setView: (view: NMSView) => void;
   toggleSidebar: () => void;
+  setMobileMenuOpen: (open: boolean) => void;
 
   // Actions — Selection
   selectRadio: (id: number | null) => void;
@@ -54,6 +56,7 @@ export const useNMSStore = create<NMSState>((set) => ({
   // Initial state
   currentView: 'fleet',
   sidebarCollapsed: false,
+  mobileMenuOpen: false,
   selectedRadioId: null,
   selectedTenant: 'all',
   siteFilter: 'all',
@@ -66,8 +69,9 @@ export const useNMSStore = create<NMSState>((set) => ({
   totalRadios: 24,
 
   // Navigation actions
-  setView: (view) => set({ currentView: view }),
+  setView: (view) => set({ currentView: view, mobileMenuOpen: false }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
 
   // Selection actions
   selectRadio: (id) => set({ selectedRadioId: id, currentView: id !== null ? 'radio' : 'fleet' }),

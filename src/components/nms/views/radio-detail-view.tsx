@@ -310,14 +310,14 @@ export default function RadioDetailView() {
       </div>
 
       {/* ─── Tab Bar ────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 border-b" style={{ borderColor: BORDER.default }}>
+      <div className="flex items-center gap-0 border-b overflow-x-auto overscroll-contain" style={{ borderColor: BORDER.default }}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab.value;
           return (
             <button
               key={tab.value}
               onClick={() => setActiveTab(tab.value)}
-              className="px-4 py-2.5 text-xs font-medium transition-colors relative"
+              className="px-3 sm:px-4 py-2.5 text-xs font-medium transition-colors relative whitespace-nowrap"
               style={{
                 color: isActive ? COLORS.amber : TEXT.tertiary,
                 backgroundColor: 'transparent',
@@ -524,8 +524,8 @@ function OverviewTab({ radio, neighbors, snrSparkline, throughputSparkline, txPo
               <MetricRow label="Form Factor" value={radio.formFactor} />
               <MetricRow label="Firmware" value={radio.firmware} />
               <MetricRow label="Agent" value={`v${radio.agentVersion}`} />
-              <MetricRow label="Enrolled" value={new Date(radio.enrolled).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
-              <MetricRow label="Cert Expires" value={radio.certExpiry} valueColor={new Date(radio.certExpiry) < new Date(Date.now() + 45 * 86400000) ? COLORS.warn : TEXT.secondary} />
+              <MetricRow label="Enrolled" value={radio.enrolled.split('T')[0]} />
+              <MetricRow label="Cert Expires" value={radio.certExpiry} valueColor={radio.certExpiry < '2025-06-01' ? COLORS.warn : TEXT.secondary} />
             </div>
           </Panel>
 
@@ -787,7 +787,7 @@ function EventsTab({ radio }: { radio: Radio }) {
                   {/* Timestamp */}
                   <div className="flex-shrink-0 w-16">
                     <span className="text-[10px] font-mono block" style={{ color: TEXT.tertiary }}>
-                      {new Date(ev.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      {ev.timestamp.split('T')[1]?.slice(0, 5) || ''}
                     </span>
                   </div>
 
@@ -821,10 +821,10 @@ function EventsTab({ radio }: { radio: Radio }) {
 // ─── Security Tab ───────────────────────────────────────────────────────────
 
 function SecurityTab({ radio }: { radio: Radio }) {
-  // Derive security data from radio
+  // Derive security data from radio — use fixed NOW to avoid hydration mismatch
   const certExpiryDate = new Date(radio.certExpiry);
-  const now = new Date();
-  const daysUntilExpiry = Math.floor((certExpiryDate.getTime() - now.getTime()) / (86400000));
+  const NOW = 1745283200000; // Fixed timestamp matching mock-data
+  const daysUntilExpiry = Math.floor((certExpiryDate.getTime() - NOW) / (86400000));
   const certStatus = daysUntilExpiry < 0 ? 'expired' : daysUntilExpiry < 30 ? 'expiring' : 'valid';
   const certStatusColor = certStatus === 'valid' ? COLORS.ok : certStatus === 'expiring' ? COLORS.warn : COLORS.err;
   const certStatusLabel = certStatus === 'valid' ? 'VALID' : certStatus === 'expiring' ? 'EXPIRING' : 'EXPIRED';

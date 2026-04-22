@@ -722,160 +722,285 @@ export default function TopologyView() {
           )}
         </div>
 
-        {/* ── Side Panel ── */}
+        {/* ── Side Panel (desktop) ── */}
         <div
-          className="w-[300px] shrink-0 border-l overflow-y-auto hidden lg:block"
+          className="hidden lg:flex w-[300px] shrink-0 border-l overflow-y-auto"
           style={{
             backgroundColor: BG.card,
             borderColor: BORDER.default,
           }}
         >
-          {activeRadio ? (
-            <div className="p-4 space-y-4">
-              {/* Radio header */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <StatusDot status={activeRadio.state} size="lg" pulse />
-                  <span className="text-lg font-bold font-mono" style={{ color: TEXT.primary }}>
-                    {activeRadio.callsign}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider"
-                    style={{
-                      backgroundColor: (SITE_COLORS[activeRadio.siteName] ?? COLORS.amber) + '15',
-                      color: SITE_COLORS[activeRadio.siteName] ?? COLORS.amber,
-                    }}
-                  >
-                    {activeRadio.siteName}
-                  </span>
-                  <span className="text-[11px]" style={{ color: TEXT.tertiary }}>
-                    {activeRadio.formFactor} · {activeRadio.band}
-                  </span>
-                </div>
-              </div>
-
-              {/* Separator */}
-              <div style={{ borderTop: `1px solid ${BORDER.default}` }} />
-
-              {/* Status chip */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: TEXT.tertiary }}>Status</span>
-                <span
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase"
-                  style={{
-                    backgroundColor: (STATUS_COLORS[activeRadio.state] ?? '#4a5567') + '18',
-                    color: STATUS_COLORS[activeRadio.state] ?? '#4a5567',
-                    border: `1px solid ${(STATUS_COLORS[activeRadio.state] ?? '#4a5567')}33`,
-                  }}
-                >
-                  <StatusDot status={activeRadio.state} size="sm" pulse={false} />
-                  {activeRadio.state}
-                </span>
-              </div>
-
-              {/* Metrics */}
-              <div className="space-y-0.5">
-                <MetricRow label="SNR" value={`${activeRadio.snr > 0 ? activeRadio.snr : '—'} dB`} valueColor={activeRadio.snr > 20 ? COLORS.ok : activeRadio.snr > 10 ? COLORS.warn : COLORS.err} />
-                <MetricRow label="Throughput" value={`${activeRadio.throughput > 0 ? activeRadio.throughput : '—'} Mbps`} valueColor={COLORS.amber} />
-                <MetricRow label="Neighbors" value={activeNeighbors} valueColor={COLORS.cyan} />
-                <MetricRow label="TX Power" value={`${activeRadio.txPower > 0 ? activeRadio.txPower : '—'} dBm`} />
-                <MetricRow label="CPU" value={`${activeRadio.cpu}%`} valueColor={activeRadio.cpu > 70 ? COLORS.err : activeRadio.cpu > 50 ? COLORS.warn : COLORS.ok} />
-                <MetricRow label="Temperature" value={`${activeRadio.temp}°C`} valueColor={activeRadio.temp > 65 ? COLORS.err : activeRadio.temp > 50 ? COLORS.warn : TEXT.secondary} />
-                <MetricRow label="Battery" value={`${activeRadio.battery}%`} valueColor={activeRadio.battery < 30 ? COLORS.err : COLORS.ok} />
-                <MetricRow label="Uptime" value={activeRadio.uptime} />
-                <MetricRow label="Firmware" value={activeRadio.firmware} />
-                <MetricRow label="Config" value={activeRadio.configState} valueColor={STATUS_COLORS[activeRadio.configState]} />
-              </div>
-
-              {/* Separator */}
-              <div style={{ borderTop: `1px solid ${BORDER.default}` }} />
-
-              {/* Links table */}
-              <div>
-                <h4 className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT.tertiary }}>
-                  Active Links ({activeLinks.length})
-                </h4>
-                {activeLinks.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {activeLinks.map((link) => {
-                      const peerId = link.radioA === activeRadio.id ? link.radioB : link.radioA;
-                      const peer = radios.find((r) => r.id === peerId);
-                      const linkColor = link.quality === 'ok' ? COLORS.ok : link.quality === 'warn' ? COLORS.warn : COLORS.err;
-
-                      return (
-                        <div
-                          key={link.id}
-                          className="flex items-center justify-between px-2.5 py-1.5 rounded"
-                          style={{ backgroundColor: BG.elevated }}
-                        >
-                          <span className="text-[11px] font-mono font-medium" style={{ color: TEXT.primary }}>
-                            {peer?.callsign ?? `#${peerId}`}
-                          </span>
-                          <span className="text-[11px] font-mono" style={{ color: linkColor }}>
-                            {link.snr} dB
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-[11px]" style={{ color: TEXT.muted }}>
-                    No active links
-                  </p>
-                )}
-              </div>
-
-              {/* Separator */}
-              <div style={{ borderTop: `1px solid ${BORDER.default}` }} />
-
-              {/* SNR trend sparkline */}
-              <div>
-                <h4 className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT.tertiary }}>
-                  SNR Trend (24h)
-                </h4>
-                <Sparkline
-                  data={seededSparkline(activeRadio.id, 4, activeRadio.snr)}
-                  width={260}
-                  height={40}
-                  color={activeRadio.snr > 20 ? COLORS.ok : COLORS.warn}
-                  fillColor={activeRadio.snr > 20 ? COLORS.ok : COLORS.warn}
-                  strokeWidth={1.5}
-                />
-              </div>
-
-              {/* Throughput trend sparkline */}
-              <div>
-                <h4 className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT.tertiary }}>
-                  Throughput Trend (24h)
-                </h4>
-                <Sparkline
-                  data={seededSparkline(activeRadio.id + 100, 20, activeRadio.throughput)}
-                  width={260}
-                  height={40}
-                  color={COLORS.amber}
-                  fillColor={COLORS.amber}
-                  strokeWidth={1.5}
-                />
-              </div>
-            </div>
-          ) : (
-            /* Empty state */
-            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={TEXT.muted} strokeWidth="1.5" strokeLinecap="round" className="mb-3">
-                <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" />
-              </svg>
-              <p className="text-sm font-medium" style={{ color: TEXT.secondary }}>
-                Select a Node
-              </p>
-              <p className="text-xs mt-1" style={{ color: TEXT.tertiary }}>
-                Click any node on the topology to view radio details, links, and performance trends.
-              </p>
-            </div>
-          )}
+          <TopologySidePanel activeRadio={activeRadio} activeId={activeId} activeLinks={activeLinks} activeNeighbors={activeNeighbors} />
         </div>
+
+        {/* ── Mobile Bottom Sheet ── */}
+        {activeRadio && (
+          <MobileBottomSheet radio={activeRadio} activeId={activeId} activeLinks={activeLinks} activeNeighbors={activeNeighbors} />
+        )}
       </div>
     </div>
   );
 }
+
+// ─── Desktop Side Panel Content (extracted) ─────────────────────────────────
+
+function TopologySidePanel({ activeRadio, activeId, activeLinks, activeNeighbors }: {
+  activeRadio: typeof radios[number] | null;
+  activeId: number | null;
+  activeLinks: ReturnType<typeof links.filter>;
+  activeNeighbors: number;
+}) {
+  if (!activeRadio) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={TEXT.muted} strokeWidth="1.5" strokeLinecap="round" className="mb-3">
+          <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" />
+        </svg>
+        <p className="text-sm font-medium" style={{ color: TEXT.secondary }}>
+          Select a Node
+        </p>
+        <p className="text-xs mt-1" style={{ color: TEXT.tertiary }}>
+          Click any node on the topology to view radio details, links, and performance trends.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Radio header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <StatusDot status={activeRadio.state} size="lg" pulse />
+          <span className="text-lg font-bold font-mono" style={{ color: TEXT.primary }}>
+            {activeRadio.callsign}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider"
+            style={{
+              backgroundColor: (SITE_COLORS[activeRadio.siteName] ?? COLORS.amber) + '15',
+              color: SITE_COLORS[activeRadio.siteName] ?? COLORS.amber,
+            }}
+          >
+            {activeRadio.siteName}
+          </span>
+          <span className="text-[11px]" style={{ color: TEXT.tertiary }}>
+            {activeRadio.formFactor} · {activeRadio.band}
+          </span>
+        </div>
+      </div>
+
+      {/* Separator */}
+      <div style={{ borderTop: `1px solid ${BORDER.default}` }} />
+
+      {/* Status chip */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs" style={{ color: TEXT.tertiary }}>Status</span>
+        <span
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase"
+          style={{
+            backgroundColor: (STATUS_COLORS[activeRadio.state] ?? '#4a5567') + '18',
+            color: STATUS_COLORS[activeRadio.state] ?? '#4a5567',
+            border: `1px solid ${(STATUS_COLORS[activeRadio.state] ?? '#4a5567')}33`,
+          }}
+        >
+          <StatusDot status={activeRadio.state} size="sm" pulse={false} />
+          {activeRadio.state}
+        </span>
+      </div>
+
+      {/* Metrics */}
+      <div className="space-y-0.5">
+        <MetricRow label="SNR" value={`${activeRadio.snr > 0 ? activeRadio.snr : '—'} dB`} valueColor={activeRadio.snr > 20 ? COLORS.ok : activeRadio.snr > 10 ? COLORS.warn : COLORS.err} />
+        <MetricRow label="Throughput" value={`${activeRadio.throughput > 0 ? activeRadio.throughput : '—'} Mbps`} valueColor={COLORS.amber} />
+        <MetricRow label="Neighbors" value={activeNeighbors} valueColor={COLORS.cyan} />
+        <MetricRow label="TX Power" value={`${activeRadio.txPower > 0 ? activeRadio.txPower : '—'} dBm`} />
+        <MetricRow label="CPU" value={`${activeRadio.cpu}%`} valueColor={activeRadio.cpu > 70 ? COLORS.err : activeRadio.cpu > 50 ? COLORS.warn : COLORS.ok} />
+        <MetricRow label="Temperature" value={`${activeRadio.temp}°C`} valueColor={activeRadio.temp > 65 ? COLORS.err : activeRadio.temp > 50 ? COLORS.warn : TEXT.secondary} />
+        <MetricRow label="Battery" value={`${activeRadio.battery}%`} valueColor={activeRadio.battery < 30 ? COLORS.err : COLORS.ok} />
+        <MetricRow label="Uptime" value={activeRadio.uptime} />
+        <MetricRow label="Firmware" value={activeRadio.firmware} />
+        <MetricRow label="Config" value={activeRadio.configState} valueColor={STATUS_COLORS[activeRadio.configState]} />
+      </div>
+
+      {/* Separator */}
+      <div style={{ borderTop: `1px solid ${BORDER.default}` }} />
+
+      {/* Links table */}
+      <div>
+        <h4 className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT.tertiary }}>
+          Active Links ({activeLinks.length})
+        </h4>
+        {activeLinks.length > 0 ? (
+          <div className="space-y-1.5">
+            {activeLinks.map((link) => {
+              const peerId = link.radioA === activeRadio.id ? link.radioB : link.radioA;
+              const peer = radios.find((r) => r.id === peerId);
+              const linkColor = link.quality === 'ok' ? COLORS.ok : link.quality === 'warn' ? COLORS.warn : COLORS.err;
+
+              return (
+                <div
+                  key={link.id}
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded"
+                  style={{ backgroundColor: BG.elevated }}
+                >
+                  <span className="text-[11px] font-mono font-medium" style={{ color: TEXT.primary }}>
+                    {peer?.callsign ?? `#${peerId}`}
+                  </span>
+                  <span className="text-[11px] font-mono" style={{ color: linkColor }}>
+                    {link.snr} dB
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-[11px]" style={{ color: TEXT.muted }}>
+            No active links
+          </p>
+        )}
+      </div>
+
+      {/* Separator */}
+      <div style={{ borderTop: `1px solid ${BORDER.default}` }} />
+
+      {/* SNR trend sparkline */}
+      <div>
+        <h4 className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT.tertiary }}>
+          SNR Trend (24h)
+        </h4>
+        <Sparkline
+          data={seededSparkline(activeRadio.id, 4, activeRadio.snr)}
+          width={260}
+          height={40}
+          color={activeRadio.snr > 20 ? COLORS.ok : COLORS.warn}
+          fillColor={activeRadio.snr > 20 ? COLORS.ok : COLORS.warn}
+          strokeWidth={1.5}
+        />
+      </div>
+
+      {/* Throughput trend sparkline */}
+      <div>
+        <h4 className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT.tertiary }}>
+          Throughput Trend (24h)
+        </h4>
+        <Sparkline
+          data={seededSparkline(activeRadio.id + 100, 20, activeRadio.throughput)}
+          width={260}
+          height={40}
+          color={COLORS.amber}
+          fillColor={COLORS.amber}
+          strokeWidth={1.5}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Mobile Bottom Sheet ───────────────────────────────────────────────────
+
+function MobileBottomSheet({ radio, activeLinks, activeNeighbors }: {
+  radio: typeof radios[number];
+  activeId: number | null;
+  activeLinks: ReturnType<typeof links.filter>;
+  activeNeighbors: number;
+}) {
+  const { selectRadio } = useNMSStore();
+
+  const linkColor = (q: string) => q === 'ok' ? COLORS.ok : q === 'warn' ? COLORS.warn : COLORS.err;
+
+  return (
+    <div
+      className="lg:hidden absolute bottom-0 left-0 right-0 z-30 animate-slide-up rounded-t-xl border-t overflow-hidden max-h-[45vh]"
+      style={{
+        backgroundColor: BG.card,
+        borderColor: BORDER.default,
+        boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
+      }}
+    >
+      {/* Drag handle */}
+      <div className="flex justify-center pt-2 pb-1">
+        <div className="w-10 h-1 rounded-full" style={{ backgroundColor: BORDER.hover }} />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pb-2">
+        <div className="flex items-center gap-2">
+          <StatusDot status={radio.state} size="md" pulse />
+          <span className="text-sm font-bold font-mono" style={{ color: TEXT.primary }}>{radio.callsign}</span>
+          <span
+            className="px-1.5 py-0.5 rounded text-[9px] font-medium uppercase"
+            style={{
+              backgroundColor: (SITE_COLORS[radio.siteName] ?? COLORS.amber) + '15',
+              color: SITE_COLORS[radio.siteName] ?? COLORS.amber,
+            }}
+          >
+            {radio.siteName}
+          </span>
+        </div>
+        <button
+          onClick={() => selectRadio(null)}
+          className="flex items-center justify-center w-7 h-7 rounded-md"
+          style={{ color: TEXT.tertiary }}
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="overflow-y-auto overscroll-contain px-4 pb-4 space-y-3" style={{ maxHeight: 'calc(45vh - 60px)' }}>
+        {/* Quick metrics grid */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'SNR', value: `${radio.snr} dB`, color: radio.snr > 20 ? COLORS.ok : radio.snr > 10 ? COLORS.warn : COLORS.err },
+            { label: 'Throughput', value: `${radio.throughput} Mbps`, color: COLORS.amber },
+            { label: 'Neighbors', value: String(activeNeighbors), color: COLORS.cyan },
+            { label: 'CPU', value: `${radio.cpu}%`, color: radio.cpu > 70 ? COLORS.err : COLORS.ok },
+            { label: 'Temp', value: `${radio.temp}°C`, color: radio.temp > 65 ? COLORS.err : TEXT.secondary },
+            { label: 'Battery', value: `${radio.battery}%`, color: radio.battery < 30 ? COLORS.err : COLORS.ok },
+          ].map((m) => (
+            <div key={m.label} className="rounded-md p-2" style={{ backgroundColor: BG.elevated }}>
+              <span className="text-[9px] uppercase tracking-wider block" style={{ color: TEXT.tertiary }}>{m.label}</span>
+              <span className="text-xs font-bold font-mono block mt-0.5" style={{ color: m.color }}>{m.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Links */}
+        {activeLinks.length > 0 && (
+          <div>
+            <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: TEXT.tertiary }}>
+              Active Links
+            </h4>
+            <div className="flex gap-2 overflow-x-auto overscroll-contain pb-1">
+              {activeLinks.map((link) => {
+                const peerId = link.radioA === radio.id ? link.radioB : link.radioA;
+                const peer = radios.find((r) => r.id === peerId);
+                return (
+                  <div
+                    key={link.id}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md"
+                    style={{ backgroundColor: BG.input, border: `1px solid ${BORDER.default}` }}
+                    onClick={() => selectRadio(peerId)}
+                  >
+                    <StatusDot status={peer?.state ?? 'offline'} size="sm" pulse={false} />
+                    <span className="text-[10px] font-mono font-medium" style={{ color: TEXT.primary }}>
+                      {peer?.callsign ?? `#${peerId}`}
+                    </span>
+                    <span className="text-[10px] font-mono" style={{ color: linkColor(link.quality) }}>
+                      {link.snr}dB
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Topology View Component (moved above) ───────────────────

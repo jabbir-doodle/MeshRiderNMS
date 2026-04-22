@@ -39,16 +39,16 @@ export function NMSLayout({ children }: NMSLayoutProps) {
 
   return (
     <div className="flex h-screen bg-[#07090d] overflow-hidden">
-      {/* Sidebar */}
+      {/* Sidebar - rendered inside layout on desktop, as fixed overlay on mobile */}
       <NMSSidebar />
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden md:ml-0">
         {/* Topbar */}
         <NMSTopbar />
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-[#0b0f16]">
+        <main className="flex-1 overflow-y-auto bg-[#0b0f16] overscroll-contain">
           {children ?? (
             <PlaceholderView view={currentView} />
           )}
