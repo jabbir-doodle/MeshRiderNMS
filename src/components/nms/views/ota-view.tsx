@@ -40,14 +40,12 @@ function generateOTARows(campaign: OTACampaign): RadioOTARow[] {
   const completedCount = campaign.completed;
   const failedCount = campaign.failed;
 
-  // Fill states based on campaign progress
   for (let i = 0; i < campaignRadios.length; i++) {
     if (i < completedCount) {
       states.push('complete');
     } else if (i < completedCount + failedCount) {
       states.push('failed');
     } else if (campaign.status === 'active') {
-      // A few in-progress, rest queued
       if (i < completedCount + 3) {
         states.push('in-progress');
       } else {
@@ -60,7 +58,6 @@ function generateOTARows(campaign: OTACampaign): RadioOTARow[] {
       else if (i < completedCount + failedCount) states.push('failed');
       else states.push('queued');
     } else {
-      // done
       if (i < completedCount) states.push('complete');
       else if (i < completedCount + failedCount) states.push('failed');
       else states.push('rollback');
@@ -71,7 +68,6 @@ function generateOTARows(campaign: OTACampaign): RadioOTARow[] {
   const stageIndex = stages.indexOf(campaign.stage);
   const now = new Date();
 
-  // Deterministic pseudo-random for hydration safety
   const detRand = (i: number) => Math.abs(Math.sin((i + 3) * 12.9898 + 78.233) * 43758.5453) % 1
 
   campaignRadios.forEach((r, i) => {
@@ -118,12 +114,64 @@ function generateOTARows(campaign: OTACampaign): RadioOTARow[] {
   return rows;
 }
 
-// ─── Stage Progress Bar ──────────────────────────────────────────────────────
+// ─── Campaign Statistics Strip ───────────────────────────────────────────────
+
+function CampaignStatsStrip() {
+  const total = otaCampaigns.length;
+  const active = otaCampaigns.filter(c => c.status === 'active').length;
+  const completed = otaCampaigns.filter(c => c.status === 'done').length;
+  const failed = otaCampaigns.filter(c => c.status === 'failed').length;
+
+  const stats = [
+    { label: 'Total Campaigns', value: total, color: COLORS.amber },
+    { label: 'Active', value: active, color: COLORS.ok },
+    { label: 'Completed', value: completed, color: COLORS.cyan },
+    { label: 'Failed', value: failed, color: COLORS.err },
+  ];
+
+  return (
+    <div
+      className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+    >
+      {stats.map((stat) => (
+        <div
+          key={stat.label}
+          className="rounded-lg border p-3 transition-all duration-200 hover:scale-[1.02]"
+          style={{
+            backgroundColor: BG.card,
+            borderColor: BORDER.default,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = stat.color + '40';
+            e.currentTarget.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.02), 0 0 12px ${stat.color}15`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = BORDER.default;
+            e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.02)';
+          }}
+        >
+          <div className="text-[10px] font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>
+            {stat.label}
+          </div>
+          <div
+            className="text-xl font-bold tabular-nums leading-tight mt-1"
+            style={{ color: stat.color }}
+          >
+            {stat.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Stage Progress Bar (Visual step indicator) ──────────────────────────────
 
 const STAGES = [
   { key: 'canary', label: 'Canary', pct: '10%', icon: '1' },
-  { key: 'stage25', label: 'Stage 25%', pct: '25%', icon: '2' },
-  { key: 'stage50', label: 'Stage 50%', pct: '50%', icon: '3' },
+  { key: 'stage25', label: '25%', pct: '25%', icon: '2' },
+  { key: 'stage50', label: '50%', pct: '50%', icon: '3' },
   { key: 'full', label: 'Full Rollout', pct: '100%', icon: '4' },
 ] as const;
 
@@ -134,7 +182,6 @@ function getStageStatus(campaign: OTACampaign): Record<StageKey, 'complete' | 'i
   const currentIdx = stageOrder.indexOf(campaign.stage as StageKey);
 
   if (campaign.status === 'failed') {
-    // Mark up to current stage as failed scenario
     const result: Record<StageKey, 'complete' | 'in-progress' | 'queued'> = {
       canary: 'complete',
       stage25: currentIdx >= 1 ? 'complete' : 'queued',
@@ -162,7 +209,6 @@ function getStageStatus(campaign: OTACampaign): Record<StageKey, 'complete' | 'i
     };
   }
 
-  // active or paused
   const result: Record<StageKey, 'complete' | 'in-progress' | 'queued'> = {
     canary: 'complete',
     stage25: 'complete',
@@ -187,64 +233,138 @@ function StageProgressBar({ campaign }: { campaign: OTACampaign }) {
   const stageStatus = getStageStatus(campaign);
 
   return (
-    <div className="space-y-3">
+    <div className="flex items-start gap-0">
       {STAGES.map((stage, idx) => {
         const status = stageStatus[stage.key];
         const isLast = idx === STAGES.length - 1;
+
+        const circleColor = status === 'complete' ? COLORS.ok
+          : status === 'in-progress' ? COLORS.amber
+          : TEXT.muted;
+
+        const lineColor = status === 'complete' ? COLORS.ok : BORDER.default;
+
         return (
-          <div key={stage.key} className="flex items-center gap-3">
+          <div key={stage.key} className="flex items-center flex-1 min-w-0">
+            {/* Circle + label */}
+            <div className="flex flex-col items-center gap-1.5 flex-shrink-0" style={{ minWidth: 56 }}>
+              <div
+                className="flex items-center justify-center rounded-full transition-all duration-300"
+                style={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: status === 'complete' ? COLORS.ok + '20'
+                    : status === 'in-progress' ? COLORS.amber + '20'
+                    : BG.input,
+                  border: `2px solid ${circleColor}`,
+                  boxShadow: status === 'in-progress' ? `0 0 12px ${COLORS.amber}30` : 'none',
+                }}
+              >
+                {status === 'complete' ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLORS.ok} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  <span className="text-xs font-bold" style={{ color: circleColor }}>{stage.icon}</span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium text-center leading-tight" style={{
+                color: status === 'queued' ? TEXT.muted : TEXT.primary,
+              }}>
+                {stage.label}
+              </span>
+            </div>
+
             {/* Connector line */}
             {!isLast && (
-              <div className="flex flex-col items-center" style={{ width: 32 }}>
+              <div className="flex-1 flex items-center justify-center" style={{ marginTop: -16 }}>
                 <div
-                  className="w-0.5 h-3"
-                  style={{ backgroundColor: status === 'complete' ? COLORS.ok : BORDER.default }}
+                  className="w-full max-w-[80px] h-1 rounded-full transition-all duration-500"
+                  style={{
+                    backgroundColor: lineColor,
+                    opacity: status === 'complete' ? 0.8 : 0.3,
+                  }}
                 />
               </div>
             )}
-            {/* Circle / Check */}
-            <div
-              className="flex items-center justify-center rounded-full flex-shrink-0"
-              style={{
-                width: 32,
-                height: 32,
-                backgroundColor: status === 'complete' ? COLORS.ok + '20' :
-                  status === 'in-progress' ? COLORS.amber + '20' : BG.input,
-                border: `1.5px solid ${status === 'complete' ? COLORS.ok : status === 'in-progress' ? COLORS.amber : BORDER.default}`,
-              }}
-            >
-              {status === 'complete' ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.ok} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              ) : status === 'in-progress' ? (
-                <span className="text-xs font-bold" style={{ color: COLORS.amber }}>{stage.icon}</span>
-              ) : (
-                <span className="text-xs font-medium" style={{ color: TEXT.muted }}>{stage.icon}</span>
-              )}
-            </div>
-            {/* Label + status */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium" style={{ color: status === 'queued' ? TEXT.tertiary : TEXT.primary }}>
-                  {stage.label}
-                </span>
-                <span className="text-[10px] uppercase tracking-wider font-medium" style={{
-                  color: status === 'complete' ? COLORS.ok : status === 'in-progress' ? COLORS.amber : TEXT.muted,
-                }}>
-                  {status === 'complete' ? 'Complete' : status === 'in-progress' ? 'In Progress' : 'Queued'}
-                </span>
-              </div>
-              {!isLast && (
-                <div
-                  className="w-full h-0.5 mt-1 rounded-full"
-                  style={{ backgroundColor: status === 'complete' ? COLORS.ok + '40' : BORDER.default }}
-                />
-              )}
-            </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Estimated Completion Time ───────────────────────────────────────────────
+
+function EstimatedCompletion({ campaign }: { campaign: OTACampaign }) {
+  if (campaign.status !== 'active') return null;
+
+  const remaining = campaign.total - campaign.completed - campaign.failed;
+  if (remaining <= 0) return null;
+
+  // Mock estimate: ~3 min per radio for current stage
+  const minutesPerRadio = 3;
+  const estimatedMinutes = remaining * minutesPerRadio;
+  const hours = Math.floor(estimatedMinutes / 60);
+  const mins = estimatedMinutes % 60;
+
+  const etaText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 rounded-lg mt-3"
+      style={{
+        backgroundColor: COLORS.amber + '08',
+        border: `1px solid ${COLORS.amber}20`,
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLORS.amber} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+      </svg>
+      <span className="text-[11px]" style={{ color: TEXT.secondary }}>
+        <span style={{ color: COLORS.amber }}>Est. completion:</span> {etaText} ({remaining} radios remaining)
+      </span>
+    </div>
+  );
+}
+
+// ─── Per-Radio Progress Bar ──────────────────────────────────────────────────
+
+function RadioProgressBar({
+  progress,
+  state,
+  stage,
+}: {
+  progress: number;
+  state: RadioOTAState;
+  stage: string;
+}) {
+  const barColor =
+    state === 'complete' ? COLORS.ok :
+    state === 'in-progress' ? COLORS.amber :
+    state === 'failed' ? COLORS.err :
+    BORDER.default;
+
+  return (
+    <div className="flex items-center gap-2 min-w-[120px]">
+      <div
+        className="flex-1 rounded-full overflow-hidden h-2"
+        style={{ backgroundColor: '#222b39' }}
+      >
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{
+            width: `${progress}%`,
+            backgroundColor: barColor,
+            boxShadow: progress > 0 && progress < 100 ? `0 0 6px ${barColor}44` : 'none',
+          }}
+        />
+      </div>
+      <span className="text-[10px] tabular-nums font-mono min-w-[28px] text-right" style={{
+        color: state === 'queued' ? TEXT.muted : barColor,
+      }}>
+        {progress}%
+      </span>
     </div>
   );
 }
@@ -262,7 +382,7 @@ export default function OTAView() {
   const otaRows = useMemo(() => generateOTARows(selectedCampaign), [selectedCampaign]);
 
   return (
-    <div className="p-4 lg:p-6 space-y-4">
+    <div className="p-4 lg:p-6 space-y-4 fade-in">
       {/* ─── Header ────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
@@ -294,6 +414,9 @@ export default function OTAView() {
         </div>
       </div>
 
+      {/* ─── Campaign Statistics Strip ─────────────────────────────────── */}
+      <CampaignStatsStrip />
+
       {/* ─── Two-Column Layout ──────────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row gap-4">
         {/* ─── Left Column: Campaign List ──────────────────────────────── */}
@@ -308,15 +431,15 @@ export default function OTAView() {
                   <button
                     key={campaign.id}
                     onClick={() => setSelectedCampaignId(campaign.id)}
-                    className="w-full text-left p-4 transition-colors"
+                    className="w-full text-left p-4 transition-all duration-200 active:scale-[0.99]"
                     style={{
                       backgroundColor: isSelected ? BG.elevated : 'transparent',
                       borderLeft: isSelected ? `3px solid ${COLORS.amber}` : '3px solid transparent',
                       borderBottom: `1px solid ${BORDER.default}`,
                       cursor: 'pointer',
                     }}
-                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = BG.elevated; }}
-                    onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    onMouseEnter={(e) => { if (!isSelected) { e.currentTarget.style.backgroundColor = BG.elevated; e.currentTarget.style.borderLeftColor = COLORS.amber + '40'; } }}
+                    onMouseLeave={(e) => { if (!isSelected) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderLeftColor = 'transparent'; } }}
                   >
                     {/* Top row */}
                     <div className="flex items-center justify-between mb-2">
@@ -358,7 +481,11 @@ export default function OTAView() {
         {/* ─── Right Column: Campaign Detail ───────────────────────────── */}
         <div className="flex-1 min-w-0 space-y-4">
           {/* Campaign Header */}
-          <div className="rounded-lg border p-4" style={{ backgroundColor: BG.card, borderColor: BORDER.default }}>
+          <div className="rounded-lg border p-4" style={{
+            backgroundColor: BG.card,
+            borderColor: BORDER.default,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+          }}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -384,9 +511,10 @@ export default function OTAView() {
             </div>
           </div>
 
-          {/* Stage Progress */}
+          {/* Stage Progress (Visual step indicator) */}
           <Panel header={<PanelHeader title="Rollout Stages" subtitle="Progressive deployment pipeline" />}>
             <StageProgressBar campaign={selectedCampaign} />
+            <EstimatedCompletion campaign={selectedCampaign} />
           </Panel>
 
           {/* Per-Radio Table */}
@@ -445,11 +573,6 @@ export default function OTAView() {
                       row.state === 'failed' ? COLORS.err :
                       row.state === 'rollback' ? COLORS.info : TEXT.muted;
 
-                    const progressColor =
-                      row.state === 'complete' ? COLORS.ok :
-                      row.state === 'in-progress' ? COLORS.amber :
-                      row.state === 'failed' ? COLORS.err : BORDER.default;
-
                     const resultColor =
                       row.result === 'Success' ? COLORS.ok :
                       row.result === 'Timeout' ? COLORS.err :
@@ -458,7 +581,7 @@ export default function OTAView() {
                     return (
                       <tr
                         key={row.radioId}
-                        className="transition-colors"
+                        className="transition-all duration-200"
                         style={{ borderBottom: `1px solid ${BORDER.default}` }}
                         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = BG.elevated; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -488,19 +611,11 @@ export default function OTAView() {
                           </span>
                         </td>
                         <td className="px-4 py-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16">
-                              <ProgressBar
-                                value={row.progress}
-                                max={100}
-                                color={progressColor}
-                                height={3}
-                              />
-                            </div>
-                            <span className="text-[10px] tabular-nums" style={{ color: TEXT.tertiary }}>
-                              {row.progress}%
-                            </span>
-                          </div>
+                          <RadioProgressBar
+                            progress={row.progress}
+                            state={row.state}
+                            stage={row.stage}
+                          />
                         </td>
                         <td className="px-4 py-2 font-mono tabular-nums" style={{ color: TEXT.secondary }}>
                           {row.started}
@@ -539,7 +654,7 @@ function OTAHeaderButton({
 }) {
   return (
     <button
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all active:scale-[0.97]"
       style={{
         backgroundColor: primary ? COLORS.amber + '20' : BG.elevated,
         color: primary ? COLORS.amber : TEXT.secondary,
@@ -577,7 +692,7 @@ function OTAAction({
 }) {
   return (
     <button
-      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors"
+      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors active:scale-[0.97]"
       style={{
         backgroundColor: BG.input,
         color: TEXT.secondary,

@@ -137,6 +137,16 @@ export interface SpectrumEvent {
   duration: string;
 }
 
+export interface Notification {
+  id: number;
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  description: string;
+  timestamp: string;
+  read: boolean;
+  scope: string;
+}
+
 // ─── Seeded PRNG (Mulberry32) — prevents hydration mismatch ─────────
 // Using a fixed seed so server and client produce identical data.
 function mulberry32(seed: number): () => number {
@@ -786,6 +796,18 @@ export const spectrumEvents: SpectrumEvent[] = [
     site: 'Echo',
     duration: '15 min burst',
   },
+];
+
+// ─── Notifications (7) ──────────────────────────────────────────────────────
+
+export const notifications: Notification[] = [
+  { id: 1, severity: 'critical', title: 'Radio MR-009-D Offline', description: 'No heartbeat for 45 min at Site Bravo.', timestamp: relativeTime(45), read: false, scope: 'site-bravo' },
+  { id: 2, severity: 'critical', title: 'Jamming Detected — Charlie', description: 'Interference at 2.44 GHz, duty cycle >85%.', timestamp: relativeTime(62), read: false, scope: 'site-charlie' },
+  { id: 3, severity: 'warning', title: 'CPU Thermal Throttle', description: 'MR-017-C exceeded 72°C threshold.', timestamp: relativeTime(78), read: true, scope: 'site-charlie' },
+  { id: 4, severity: 'warning', title: 'Config Drift — MR-014-A', description: 'Channel width mismatch detected.', timestamp: relativeTime(120), read: true, scope: 'site-alpha' },
+  { id: 5, severity: 'info', title: 'OTA Campaign ota-003 Done', description: '23/24 radios updated successfully.', timestamp: relativeTime(2880), read: true, scope: 'global' },
+  { id: 6, severity: 'warning', title: 'SNR Degradation', description: 'Link MR-005→MR-006 dropped to 14dB.', timestamp: relativeTime(95), read: true, scope: 'site-bravo' },
+  { id: 7, severity: 'info', title: 'Radio MR-024-D Enrolled', description: 'New Boost radio at Site Delta.', timestamp: relativeTime(600), read: true, scope: 'site-delta' },
 ];
 
 // ─── KPI helpers ────────────────────────────────────────────────────────────

@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 import { useNMSStore, type NMSView } from '@/lib/nms-data/store'
 import { NMSSidebar } from './nms-sidebar'
 import { NMSTopbar } from './nms-topbar'
+import { AIAdvisorPanel } from './ai-advisor-panel'
+import { SystemStatusBar } from './system-status-bar'
 
 const VIEW_PLACEHOLDER_TITLES: Record<NMSView, string> = {
   fleet: 'Mesh Rider Dashboard',
@@ -51,7 +53,13 @@ export function NMSLayout({ children }: NMSLayoutProps) {
             <PlaceholderView view={currentView} />
           )}
         </main>
+
+        {/* System Status Bar */}
+        <SystemStatusBar />
       </div>
+
+      {/* AI Advisor Panel (floating, independent of views) */}
+      <AIAdvisorPanel />
     </div>
   )
 }

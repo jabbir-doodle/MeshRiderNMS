@@ -1,11 +1,12 @@
 // =============================================================================
 // Mesh Rider Fleet NMS — Network Topology View
 // Task ID: 3-a | SVG-based mesh network visualization with side panel
+// Enhanced: Site legend, zoom controls, minimap, tooltips, link quality
 // =============================================================================
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { radios, links, type Radio, type Link } from '@/lib/nms-data/mock-data';
 import { useNMSStore } from '@/lib/nms-data/store';
 import {
@@ -43,6 +44,14 @@ const SITE_CENTERS: Record<string, { cx: number; cy: number }> = {
   Echo:   { cx: 580, cy: 430 },
 };
 
+const SITE_COLORS: Record<string, string> = {
+  Alpha: '#f4a417',
+  Bravo: '#2dd4ff',
+  Charlie: '#3ddc97',
+  Delta: '#ff6b6b',
+  Echo: '#a78bfa',
+};
+
 function seededSparkline(seed: number, variance: number, base: number): number[] {
   const data: number[] = [];
   let v = base;
@@ -53,14 +62,309 @@ function seededSparkline(seed: number, variance: number, base: number): number[]
   return data;
 }
 
+// ─── Site Legend (top-right overlay) ────────────────────────────────────────
+
+function SiteLegend() {
+  const sites = [
+    { name: 'Alpha', color: SITE_COLORS.Alpha },
+    { name: 'Bravo', color: SITE_COLORS.Bravo },
+    { name: 'Charlie', color: SITE_COLORS.Charlie },
+    { name: 'Delta', color: SITE_COLORS.Delta },
+    { name: 'Echo', color: SITE_COLORS.Echo },
+  ];
+
+  return (
+    <div
+      className="absolute top-3 right-3 z-20 rounded-lg overflow-hidden"
+      style={{
+        backgroundColor: 'rgba(11, 15, 22, 0.9)',
+        border: `1px solid ${BORDER.default}`,
+        backdropFilter: 'blur(8px)',
+      }}
+    >
+      <div
+        className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider font-mono"
+        style={{
+          color: TEXT.tertiary,
+          borderBottom: `1px solid ${BORDER.default}`,
+          backgroundColor: BG.elevated,
+        }}
+      >
+        Sites
+      </div>
+      <div className="p-2 space-y-1">
+        {sites.map((site) => (
+          <div key={site.name} className="flex items-center gap-2">
+            <span
+              className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+              style={{ backgroundColor: site.color }}
+            />
+            <span className="text-[11px] font-mono" style={{ color: TEXT.secondary }}>
+              {site.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Zoom Controls ──────────────────────────────────────────────────────────
+
+function ZoomControls({
+  zoom,
+  onZoomIn,
+  onZoomOut,
+  onFit,
+}: {
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFit: () => void;
+}) {
+  return (
+    <div
+      className="absolute bottom-3 left-3 z-20 flex flex-col gap-1 rounded-lg overflow-hidden"
+      style={{
+        backgroundColor: 'rgba(11, 15, 22, 0.9)',
+        border: `1px solid ${BORDER.default}`,
+        backdropFilter: 'blur(8px)',
+      }}
+    >
+      <button
+        onClick={onZoomIn}
+        className="flex items-center justify-center w-8 h-8 text-sm font-mono font-bold transition-colors"
+        style={{ color: TEXT.secondary, backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = COLORS.amber; e.currentTarget.style.backgroundColor = BG.elevated; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = TEXT.secondary; e.currentTarget.style.backgroundColor = 'transparent'; }}
+        title="Zoom In"
+      >
+        +
+      </button>
+      <div style={{ borderTop: `1px solid ${BORDER.default}` }} />
+      <button
+        onClick={onZoomOut}
+        className="flex items-center justify-center w-8 h-8 text-sm font-mono font-bold transition-colors"
+        style={{ color: TEXT.secondary, backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = COLORS.amber; e.currentTarget.style.backgroundColor = BG.elevated; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = TEXT.secondary; e.currentTarget.style.backgroundColor = 'transparent'; }}
+        title="Zoom Out"
+      >
+        −
+      </button>
+      <div style={{ borderTop: `1px solid ${BORDER.default}` }} />
+      <button
+        onClick={onFit}
+        className="flex items-center justify-center w-8 h-8 text-[10px] font-mono font-semibold transition-colors px-1"
+        style={{ color: TEXT.secondary, backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = COLORS.amber; e.currentTarget.style.backgroundColor = BG.elevated; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = TEXT.secondary; e.currentTarget.style.backgroundColor = 'transparent'; }}
+        title="Fit View"
+      >
+        Fit
+      </button>
+    </div>
+  );
+}
+
+// ─── Node Tooltip ───────────────────────────────────────────────────────────
+
+function NodeTooltip({
+  node,
+  x,
+  y,
+}: {
+  node: NodePosition;
+  x: number;
+  y: number;
+}) {
+  const { radio } = node;
+  const color = STATUS_COLORS[radio.state] ?? '#4a5567';
+
+  return (
+    <div
+      className="absolute z-30 pointer-events-none rounded-lg overflow-hidden"
+      style={{
+        left: x + 16,
+        top: y - 8,
+        backgroundColor: 'rgba(11, 15, 22, 0.95)',
+        border: `1px solid ${BORDER.default}`,
+        backdropFilter: 'blur(12px)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+        minWidth: 180,
+      }}
+    >
+      {/* Header */}
+      <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${BORDER.default}` }}>
+        <StatusDot status={radio.state} size="sm" pulse={false} />
+        <span className="text-xs font-bold font-mono" style={{ color: TEXT.primary }}>
+          {radio.callsign}
+        </span>
+        <span
+          className="ml-auto text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded"
+          style={{
+            backgroundColor: (SITE_COLORS[radio.siteName] ?? COLORS.amber) + '20',
+            color: SITE_COLORS[radio.siteName] ?? COLORS.amber,
+          }}
+        >
+          {radio.siteName}
+        </span>
+      </div>
+      {/* Metrics */}
+      <div className="px-3 py-2 space-y-1">
+        <div className="flex justify-between">
+          <span className="text-[10px] font-mono" style={{ color: TEXT.tertiary }}>Status</span>
+          <span className="text-[10px] font-mono font-semibold" style={{ color }}>{radio.state}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[10px] font-mono" style={{ color: TEXT.tertiary }}>SNR</span>
+          <span className="text-[10px] font-mono font-semibold" style={{ color: radio.snr > 20 ? COLORS.ok : radio.snr > 10 ? COLORS.warn : COLORS.err }}>
+            {radio.snr > 0 ? `${radio.snr} dB` : '—'}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[10px] font-mono" style={{ color: TEXT.tertiary }}>Throughput</span>
+          <span className="text-[10px] font-mono font-semibold" style={{ color: COLORS.amber }}>
+            {radio.throughput > 0 ? `${radio.throughput} Mbps` : '—'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Minimap ────────────────────────────────────────────────────────────────
+
+function Minimap({
+  nodePositions,
+  activeId,
+  viewBoxStr,
+  canvasW,
+  canvasH,
+}: {
+  nodePositions: NodePosition[];
+  activeId: number | null;
+  viewBoxStr: string;
+  canvasW: number;
+  canvasH: number;
+}) {
+  const minimapW = 140;
+  const minimapH = 98;
+  const nodeMap = useMemo(() => {
+    const m = new Map<number, NodePosition>();
+    for (const n of nodePositions) m.set(n.id, n);
+    return m;
+  }, [nodePositions]);
+
+  // Parse viewBox to show viewport rectangle
+  const parts = viewBoxStr.split(/\s+/).map(Number);
+  const vpX = parts[0] || 0;
+  const vpY = parts[1] || 0;
+  const vpW = parts[2] || canvasW;
+  const vpH = parts[3] || canvasH;
+
+  const rectX = (vpX / canvasW) * minimapW;
+  const rectY = (vpY / canvasH) * minimapH;
+  const rectW = (vpW / canvasW) * minimapW;
+  const rectH = (vpH / canvasH) * minimapH;
+
+  return (
+    <div
+      className="absolute bottom-3 right-3 z-20 rounded-lg overflow-hidden"
+      style={{
+        backgroundColor: 'rgba(11, 15, 22, 0.9)',
+        border: `1px solid ${BORDER.default}`,
+        backdropFilter: 'blur(8px)',
+        width: minimapW,
+        height: minimapH,
+      }}
+    >
+      <svg
+        viewBox={`0 0 ${canvasW} ${canvasH}`}
+        width={minimapW}
+        height={minimapH}
+        style={{ display: 'block' }}
+      >
+        {/* Minimap links */}
+        {links.map((link) => {
+          const nA = nodeMap.get(link.radioA);
+          const nB = nodeMap.get(link.radioB);
+          if (!nA || !nB) return null;
+          return (
+            <line
+              key={link.id}
+              x1={nA.x}
+              y1={nA.y}
+              x2={nB.x}
+              y2={nB.y}
+              stroke={BORDER.default}
+              strokeWidth="0.5"
+              opacity="0.5"
+            />
+          );
+        })}
+        {/* Minimap nodes */}
+        {nodePositions.map((node) => {
+          const isActive = activeId === node.id;
+          return (
+            <circle
+              key={node.id}
+              cx={node.x}
+              cy={node.y}
+              r={isActive ? 4 : 2.5}
+              fill={SITE_COLORS[node.radio.siteName] ?? '#4a5567'}
+              opacity={activeId && !isActive ? 0.3 : 1}
+            />
+          );
+        })}
+        {/* Viewport rectangle */}
+        <rect
+          x={rectX}
+          y={rectY}
+          width={rectW}
+          height={rectH}
+          fill="none"
+          stroke={COLORS.amber}
+          strokeWidth="2"
+          opacity="0.7"
+          rx="1"
+        />
+      </svg>
+    </div>
+  );
+}
+
 // ─── Topology View Component ────────────────────────────────────────────────
+
+const ZOOM_STEPS = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0];
 
 export default function TopologyView() {
   const { selectRadio, selectedRadioId } = useNMSStore();
   const [viewMode, setViewMode] = useState<ViewMode>('graph');
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [zoomIdx, setZoomIdx] = useState(3); // default 1.0
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const svgContainerRef = useRef<HTMLDivElement>(null);
 
   const activeId = hoveredId ?? selectedRadioId;
+  const zoom = ZOOM_STEPS[zoomIdx] ?? 1.0;
+
+  // Compute viewBox from zoom
+  const vbW = CANVAS_W / zoom;
+  const vbH = CANVAS_H / zoom;
+  const vbX = (CANVAS_W - vbW) / 2;
+  const vbY = (CANVAS_H - vbH) / 2;
+  const viewBoxStr = `${vbX} ${vbY} ${vbW} ${vbH}`;
+
+  const handleZoomIn = useCallback(() => {
+    setZoomIdx((z) => Math.min(ZOOM_STEPS.length - 1, z + 1));
+  }, []);
+  const handleZoomOut = useCallback(() => {
+    setZoomIdx((z) => Math.max(0, z - 1));
+  }, []);
+  const handleFit = useCallback(() => {
+    setZoomIdx(3);
+  }, []);
 
   // ── Compute node positions by clustering within site ──
   const nodePositions = useMemo((): NodePosition[] => {
@@ -105,6 +409,11 @@ export default function TopologyView() {
     [activeId]
   );
 
+  const hoveredNode = useMemo(
+    () => (hoveredId ? nodeMap.get(hoveredId) ?? null : null),
+    [hoveredId, nodeMap]
+  );
+
   // ── Links for selected radio's neighbors ──
   const activeLinks = useMemo(
     () =>
@@ -119,8 +428,24 @@ export default function TopologyView() {
     return links.filter((l) => l.radioA === activeId || l.radioB === activeId).length;
   }, [activeId]);
 
+  const handleNodeHover = useCallback((node: NodePosition, e: React.MouseEvent) => {
+    setHoveredId(node.id);
+    const rect = svgContainerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setTooltipPos({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
+  }, []);
+
+  const handleNodeLeave = useCallback(() => {
+    setHoveredId(null);
+    setTooltipPos(null);
+  }, []);
+
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: BG.panel }}>
+    <div className="h-full flex flex-col fade-in" style={{ backgroundColor: BG.panel }}>
       {/* ── Header ── */}
       <div className="px-4 lg:px-6 py-4 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 border-b" style={{ borderColor: BORDER.default }}>
         <div>
@@ -139,7 +464,7 @@ export default function TopologyView() {
               <button
                 key={m}
                 onClick={() => setViewMode(m)}
-                className="px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize"
+                className="px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize active:scale-[0.97]"
                 style={{
                   backgroundColor: viewMode === m ? COLORS.amber + '20' : 'transparent',
                   color: viewMode === m ? COLORS.amber : TEXT.secondary,
@@ -153,18 +478,18 @@ export default function TopologyView() {
             ))}
           </div>
 
-          {/* Legend */}
+          {/* Link quality legend */}
           <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-wider" style={{ color: TEXT.tertiary }}>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-4 h-0.5 rounded" style={{ backgroundColor: COLORS.ok }} />
+              <span className="inline-block w-4 h-[3px] rounded" style={{ backgroundColor: COLORS.ok }} />
               OK
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-4 h-0.5 rounded" style={{ backgroundColor: COLORS.warn }} />
+              <span className="inline-block w-4 h-[1.5px] rounded" style={{ backgroundColor: COLORS.warn }} />
               Warn
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-4 h-0.5 rounded" style={{ backgroundColor: COLORS.err }} />
+              <span className="inline-block w-4 h-[1px] rounded" style={{ backgroundColor: COLORS.err }} />
               Error
             </span>
           </div>
@@ -174,9 +499,29 @@ export default function TopologyView() {
       {/* ── Main Content: SVG + Side Panel ── */}
       <div className="flex-1 flex min-h-0">
         {/* SVG Canvas */}
-        <div className="flex-1 p-3 lg:p-4 overflow-hidden">
+        <div className="flex-1 p-3 lg:p-4 overflow-hidden relative" ref={svgContainerRef}>
+          {/* Site Legend overlay */}
+          <SiteLegend />
+
+          {/* Zoom Controls overlay */}
+          <ZoomControls
+            zoom={zoom}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onFit={handleFit}
+          />
+
+          {/* Minimap overlay */}
+          <Minimap
+            nodePositions={nodePositions}
+            activeId={activeId}
+            viewBoxStr={viewBoxStr}
+            canvasW={CANVAS_W}
+            canvasH={CANVAS_H}
+          />
+
           <svg
-            viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
+            viewBox={viewBoxStr}
             className="w-full h-full rounded-lg"
             style={{ backgroundColor: BG.card, border: `1px solid ${BORDER.default}` }}
             preserveAspectRatio="xMidYMid meet"
@@ -201,10 +546,26 @@ export default function TopologyView() {
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
+              {/* Gradient for high-quality links */}
+              <linearGradient id="linkGradOk" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor={COLORS.ok} stopOpacity="0.6" />
+                <stop offset="50%" stopColor={COLORS.ok} stopOpacity="1" />
+                <stop offset="100%" stopColor={COLORS.ok} stopOpacity="0.6" />
+              </linearGradient>
+              <linearGradient id="linkGradWarn" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor={COLORS.warn} stopOpacity="0.6" />
+                <stop offset="50%" stopColor={COLORS.warn} stopOpacity="1" />
+                <stop offset="100%" stopColor={COLORS.warn} stopOpacity="0.6" />
+              </linearGradient>
+              <linearGradient id="linkGradErr" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor={COLORS.err} stopOpacity="0.6" />
+                <stop offset="50%" stopColor={COLORS.err} stopOpacity="1" />
+                <stop offset="100%" stopColor={COLORS.err} stopOpacity="0.6" />
+              </linearGradient>
             </defs>
             <rect width={CANVAS_W} height={CANVAS_H} fill="url(#topoGrid)" />
 
-            {/* Site labels */}
+            {/* Site labels with colored accents */}
             {Object.entries(SITE_CENTERS).map(([name, { cx, cy }]) => (
               <g key={name}>
                 <rect
@@ -214,8 +575,9 @@ export default function TopologyView() {
                   height={18}
                   rx={4}
                   fill={BG.elevated}
-                  stroke={BORDER.default}
+                  stroke={SITE_COLORS[name] ?? BORDER.default}
                   strokeWidth="0.5"
+                  opacity="0.8"
                 />
                 <text
                   x={cx}
@@ -224,7 +586,7 @@ export default function TopologyView() {
                   fontSize="10"
                   fontFamily="monospace"
                   fontWeight="600"
-                  fill={COLORS.amber}
+                  fill={SITE_COLORS[name] ?? COLORS.amber}
                   letterSpacing="0.05em"
                 >
                   {name}
@@ -232,16 +594,28 @@ export default function TopologyView() {
               </g>
             ))}
 
-            {/* Links */}
+            {/* Links with quality indicators */}
             {links.map((link) => {
               const nA = nodeMap.get(link.radioA);
               const nB = nodeMap.get(link.radioB);
               if (!nA || !nB) return null;
 
-              const linkColor = link.quality === 'ok' ? COLORS.ok : link.quality === 'warn' ? COLORS.warn : COLORS.err;
-              const strokeWidth = link.snr > 25 ? 2.5 : link.snr > 15 ? 1.5 : 1;
               const isHighlighted = activeId && (link.radioA === activeId || link.radioB === activeId);
               const isDimmed = activeId && !isHighlighted;
+
+              // Thicker lines for better quality, color gradient
+              let strokeWidth: number;
+              let gradientId: string;
+              if (link.quality === 'ok') {
+                strokeWidth = link.snr > 25 ? 3 : 2;
+                gradientId = 'linkGradOk';
+              } else if (link.quality === 'warn') {
+                strokeWidth = link.snr > 15 ? 2 : 1.5;
+                gradientId = 'linkGradWarn';
+              } else {
+                strokeWidth = 1;
+                gradientId = 'linkGradErr';
+              }
 
               return (
                 <line
@@ -250,9 +624,9 @@ export default function TopologyView() {
                   y1={nA.y}
                   x2={nB.x}
                   y2={nB.y}
-                  stroke={linkColor}
+                  stroke={`url(#${gradientId})`}
                   strokeWidth={isHighlighted ? strokeWidth + 1.5 : strokeWidth}
-                  opacity={isDimmed ? 0.12 : isHighlighted ? 1 : 0.35}
+                  opacity={isDimmed ? 0.08 : isHighlighted ? 1 : 0.35}
                   strokeLinecap="round"
                   className="transition-opacity duration-200"
                 />
@@ -262,7 +636,8 @@ export default function TopologyView() {
             {/* Nodes */}
             {nodePositions.map((node) => {
               const { radio, x, y } = node;
-              const color = STATUS_COLORS[radio.state] ?? '#4a5567';
+              const statusColor = STATUS_COLORS[radio.state] ?? '#4a5567';
+              const siteColor = SITE_COLORS[radio.siteName] ?? COLORS.amber;
               const isActive = activeId === radio.id;
               const isDimmed = activeId && !isActive;
               const isOffline = radio.state === 'offline' || radio.state === 'error';
@@ -273,8 +648,8 @@ export default function TopologyView() {
                   className="cursor-pointer transition-all duration-150"
                   style={{ opacity: isDimmed ? 0.25 : 1 }}
                   onClick={() => selectRadio(radio.id)}
-                  onMouseEnter={() => setHoveredId(radio.id)}
-                  onMouseLeave={() => setHoveredId(null)}
+                  onMouseEnter={(e) => handleNodeHover(node, e)}
+                  onMouseLeave={handleNodeLeave}
                 >
                   {/* Glow circle */}
                   {isActive && (
@@ -283,30 +658,31 @@ export default function TopologyView() {
                       cy={y}
                       r={18}
                       fill="none"
-                      stroke={color}
+                      stroke={siteColor}
                       strokeWidth={2}
                       opacity={0.3}
                       filter="url(#nodeGlowStrong)"
                     />
                   )}
 
-                  {/* Main node circle */}
+                  {/* Outer ring (site color) */}
                   <circle
                     cx={x}
                     cy={y}
-                    r={isActive ? 12 : 9}
-                    fill={isOffline ? BG.elevated : color + '30'}
-                    stroke={color}
+                    r={isActive ? 13 : 10}
+                    fill={isOffline ? BG.elevated : siteColor + '15'}
+                    stroke={siteColor}
                     strokeWidth={isActive ? 2.5 : 1.5}
+                    opacity={isActive ? 1 : 0.6}
                     filter={isActive ? 'url(#nodeGlow)' : undefined}
                   />
 
-                  {/* Inner dot */}
+                  {/* Inner dot (status color) */}
                   <circle
                     cx={x}
                     cy={y}
-                    r={isOffline ? 2.5 : 4}
-                    fill={color}
+                    r={isOffline ? 2.5 : 4.5}
+                    fill={statusColor}
                   />
 
                   {/* Callsign label */}
@@ -322,7 +698,7 @@ export default function TopologyView() {
                     {radio.callsign}
                   </text>
 
-                  {/* SNR label (only when active) */}
+                  {/* SNR + throughput label when active */}
                   {isActive && radio.snr > 0 && (
                     <text
                       x={x}
@@ -332,13 +708,18 @@ export default function TopologyView() {
                       fontFamily="monospace"
                       fill={TEXT.tertiary}
                     >
-                      {radio.snr} dB
+                      {radio.snr} dB · {radio.throughput} Mbps
                     </text>
                   )}
                 </g>
               );
             })}
           </svg>
+
+          {/* Tooltip (HTML overlay) */}
+          {hoveredNode && tooltipPos && (
+            <NodeTooltip node={hoveredNode} x={tooltipPos.x} y={tooltipPos.y} />
+          )}
         </div>
 
         {/* ── Side Panel ── */}
@@ -362,7 +743,10 @@ export default function TopologyView() {
                 <div className="flex items-center gap-2">
                   <span
                     className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider"
-                    style={{ backgroundColor: COLORS.amber + '15', color: COLORS.amber }}
+                    style={{
+                      backgroundColor: (SITE_COLORS[activeRadio.siteName] ?? COLORS.amber) + '15',
+                      color: SITE_COLORS[activeRadio.siteName] ?? COLORS.amber,
+                    }}
                   >
                     {activeRadio.siteName}
                   </span>

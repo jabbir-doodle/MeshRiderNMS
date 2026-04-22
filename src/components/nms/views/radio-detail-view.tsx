@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { useNMSStore } from '@/lib/nms-data/store';
-import { radios, links } from '@/lib/nms-data/mock-data';
-import type { Link } from '@/lib/nms-data/mock-data';
+import { radios, links, auditEvents } from '@/lib/nms-data/mock-data';
+import type { Link, Radio, ActionType } from '@/lib/nms-data/mock-data';
 import {
   COLORS, BG, TEXT, BORDER,
   StatusDot, StatusChip, SignalBars, Sparkline, ProgressBar,
@@ -341,227 +341,16 @@ export default function RadioDetailView() {
 
       {/* ─── Tab Content ────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
-        <div className="space-y-4">
-          {/* KPI Strip */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* SNR */}
-            <KPICard
-              label="SNR"
-              value={radio.snr}
-              unit="dB"
-              icon={<SignalBars snr={radio.snr} size="sm" />}
-              sparkline={snrSparkline}
-              sparklineColor={COLORS.ok}
-            />
-            {/* Throughput */}
-            <KPICard
-              label="Throughput"
-              value={radio.throughput}
-              unit="Mbps"
-              sparkline={throughputSparkline}
-              sparklineColor={COLORS.cyan}
-            />
-            {/* Tx Power */}
-            <KPICard
-              label="Tx Power"
-              value={radio.txPower}
-              unit="dBm"
-              sparkline={txPowerSparkline}
-              sparklineColor={COLORS.amber}
-            />
-            {/* CPU + Temperature */}
-            <div
-              className="rounded-lg border p-4"
-              style={{ backgroundColor: BG.card, borderColor: BORDER.default }}
-            >
-              <span className="text-[10px] font-medium uppercase tracking-wider block mb-2" style={{ color: TEXT.tertiary }}>
-                CPU / Temp
-              </span>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-2xl font-bold tabular-nums leading-none" style={{ color: TEXT.primary }}>
-                  {radio.cpu}
-                </span>
-                <span className="text-xs" style={{ color: TEXT.tertiary }}>%</span>
-                <span className="text-xs" style={{ color: TEXT.muted }}>·</span>
-                <span className="text-sm font-semibold tabular-nums" style={{ color: radio.temp > 60 ? COLORS.warn : TEXT.primary }}>
-                  {radio.temp}°C
-                </span>
-              </div>
-              <ProgressBar
-                value={radio.temp}
-                max={80}
-                color={radio.temp > 65 ? COLORS.err : radio.temp > 55 ? COLORS.warn : COLORS.ok}
-                height={4}
-              />
-            </div>
-            {/* Battery */}
-            <div
-              className="rounded-lg border p-4"
-              style={{ backgroundColor: BG.card, borderColor: BORDER.default }}
-            >
-              <span className="text-[10px] font-medium uppercase tracking-wider block mb-2" style={{ color: TEXT.tertiary }}>
-                Battery
-              </span>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-2xl font-bold tabular-nums leading-none" style={{
-                  color: radio.battery <= 25 ? COLORS.err : radio.battery <= 50 ? COLORS.warn : TEXT.primary
-                }}>
-                  {radio.battery}
-                </span>
-                <span className="text-xs" style={{ color: TEXT.tertiary }}>%</span>
-              </div>
-              <ProgressBar
-                value={radio.battery}
-                color={radio.battery <= 25 ? COLORS.err : radio.battery <= 50 ? COLORS.warn : COLORS.ok}
-                height={4}
-              />
-            </div>
-          </div>
-
-          {/* Main Content — Two Column */}
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Left Column */}
-            <div className="flex-1 min-w-0 space-y-4">
-              {/* Link Quality Chart */}
-              <Panel
-                header={
-                  <PanelHeader
-                    title="Link Quality"
-                    subtitle={`SNR and Packet Error Rate — last ${timeRange}`}
-                    right={
-                      <SegmentedControl
-                        options={TIME_RANGES}
-                        value={timeRange}
-                        onChange={setTimeRange}
-                        size="sm"
-                      />
-                    }
-                  />
-                }
-              >
-                <LinkQualityChart snr={radio.snr} timeRange={timeRange} />
-              </Panel>
-
-              {/* Neighbors Table */}
-              <Panel
-                header={<PanelHeader title={`Mesh Neighbors (${neighbors.length})`} />}
-                noPadding
-              >
-                <div className="overflow-x-auto max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#2c3647 transparent' }}>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr style={{ backgroundColor: BG.elevated }}>
-                        <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Status</th>
-                        <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Neighbor</th>
-                        <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>SNR</th>
-                        <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Rx Rate</th>
-                        <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Tx Rate</th>
-                        <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Retries</th>
-                        <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Quality</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {neighbors.map(({ link, neighbor }) => (
-                        <tr
-                          key={link.id}
-                          className="transition-colors cursor-pointer"
-                          style={{ borderBottom: `1px solid ${BORDER.default}` }}
-                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = BG.elevated; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                          onClick={() => selectRadio(neighbor!.id)}
-                        >
-                          <td className="px-4 py-2.5">
-                            <StatusDot status={neighbor!.state} size="sm" pulse={false} />
-                          </td>
-                          <td className="px-4 py-2.5 font-medium" style={{ color: TEXT.primary }}>
-                            {neighbor!.callsign}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono tabular-nums" style={{ color: TEXT.secondary }}>{link.snr} dB</span>
-                              <SignalBars snr={link.snr} size="sm" />
-                            </div>
-                          </td>
-                          <td className="px-4 py-2.5 font-mono tabular-nums" style={{ color: TEXT.secondary }}>
-                            {link.rxAvg} Mbps
-                          </td>
-                          <td className="px-4 py-2.5 font-mono tabular-nums" style={{ color: TEXT.secondary }}>
-                            {link.txAvg} Mbps
-                          </td>
-                          <td className="px-4 py-2.5 font-mono tabular-nums" style={{
-                            color: link.retries > 5 ? COLORS.warn : TEXT.secondary
-                          }}>
-                            {link.retries}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <StatusChip status={link.quality} size="sm" />
-                          </td>
-                        </tr>
-                      ))}
-                      {neighbors.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="px-4 py-8 text-center" style={{ color: TEXT.tertiary }}>
-                            No mesh neighbors found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Panel>
-            </div>
-
-            {/* Right Column — 340px */}
-            <div className="w-full lg:w-[340px] flex-shrink-0 space-y-4">
-              {/* Identity Panel */}
-              <Panel header={<PanelHeader title="Identity" />}>
-                <div className="space-y-0.5">
-                  <MetricRow label="Callsign" value={radio.callsign} valueColor={TEXT.primary} />
-                  <MetricRow label="MAC Address" value={radio.mac} />
-                  <MetricRow label="IPv4 Address" value={radio.ip} />
-                  <MetricRow label="Form Factor" value={radio.formFactor} />
-                  <MetricRow label="Firmware" value={radio.firmware} />
-                  <MetricRow label="Agent" value={`v${radio.agentVersion}`} />
-                  <MetricRow label="Enrolled" value={new Date(radio.enrolled).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
-                  <MetricRow
-                    label="Cert Expires"
-                    value={radio.certExpiry}
-                    valueColor={new Date(radio.certExpiry) < new Date(Date.now() + 45 * 86400000) ? COLORS.warn : TEXT.secondary}
-                  />
-                </div>
-              </Panel>
-
-              {/* Config Panel */}
-              <Panel header={<PanelHeader title="Configuration" />}>
-                <div className="space-y-0.5">
-                  <MetricRow label="Template" value={radio.configTemplate} />
-                  <MetricRow label="Channel" value="36 (5.18 GHz)" />
-                  <MetricRow label="Mesh ID" value="mesh-rider-alpha" />
-                  <MetricRow label="Sense Profile" value="default" />
-                  <MetricRow label="Last Applied" value="2h 14m ago" />
-                  <div className="flex items-center justify-between py-1.5">
-                    <span className="text-xs" style={{ color: TEXT.tertiary }}>Config State</span>
-                    <StatusChip status={radio.configState} label={radio.configState === 'in-sync' ? 'IN SYNC' : 'DRIFT'} size="sm" />
-                  </div>
-                </div>
-              </Panel>
-
-              {/* Location Panel */}
-              <LocationPanel lat={radio.lat} lng={radio.lng} siteName={radio.siteName} />
-            </div>
-          </div>
-        </div>
+        <OverviewTab radio={radio} neighbors={neighbors} snrSparkline={snrSparkline} throughputSparkline={throughputSparkline} txPowerSparkline={txPowerSparkline} timeRange={timeRange} setTimeRange={setTimeRange} />
       )}
 
-      {/* ─── Placeholder for other tabs ──────────────────────────────────── */}
-      {activeTab !== 'overview' && (
-        <div className="flex items-center justify-center py-20">
-          <EmptyState
-            title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} tab`}
-            description="Detailed telemetry, configuration, event, and security views coming soon."
-          />
-        </div>
-      )}
+      {activeTab === 'telemetry' && <TelemetryTab radio={radio} />}
+
+      {activeTab === 'config' && <ConfigTab radio={radio} />}
+
+      {activeTab === 'events' && <EventsTab radio={radio} />}
+
+      {activeTab === 'security' && <SecurityTab radio={radio} />}
     </div>
   );
 }
@@ -603,5 +392,535 @@ function ActionButton({
       {icon}
       {label}
     </button>
+  );
+}
+
+// ─── Overview Tab ────────────────────────────────────────────────────────────
+
+function OverviewTab({ radio, neighbors, snrSparkline, throughputSparkline, txPowerSparkline, timeRange, setTimeRange }: {
+  radio: Radio;
+  neighbors: { link: Link; neighbor: Radio | undefined }[];
+  snrSparkline: number[];
+  throughputSparkline: number[];
+  txPowerSparkline: number[];
+  timeRange: TimeRange;
+  setTimeRange: (v: TimeRange) => void;
+}) {
+  const { selectRadio } = useNMSStore();
+
+  return (
+    <div className="space-y-4">
+      {/* KPI Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <KPICard
+          label="SNR"
+          value={radio.snr}
+          unit="dB"
+          icon={<SignalBars snr={radio.snr} size="sm" />}
+          sparkline={snrSparkline}
+          sparklineColor={COLORS.ok}
+        />
+        <KPICard
+          label="Throughput"
+          value={radio.throughput}
+          unit="Mbps"
+          sparkline={throughputSparkline}
+          sparklineColor={COLORS.cyan}
+        />
+        <KPICard
+          label="Tx Power"
+          value={radio.txPower}
+          unit="dBm"
+          sparkline={txPowerSparkline}
+          sparklineColor={COLORS.amber}
+        />
+        <div className="rounded-lg border p-4" style={{ backgroundColor: BG.card, borderColor: BORDER.default }}>
+          <span className="text-[10px] font-medium uppercase tracking-wider block mb-2" style={{ color: TEXT.tertiary }}>CPU / Temp</span>
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-2xl font-bold tabular-nums leading-none" style={{ color: TEXT.primary }}>{radio.cpu}</span>
+            <span className="text-xs" style={{ color: TEXT.tertiary }}>%</span>
+            <span className="text-xs" style={{ color: TEXT.muted }}>·</span>
+            <span className="text-sm font-semibold tabular-nums" style={{ color: radio.temp > 60 ? COLORS.warn : TEXT.primary }}>{radio.temp}°C</span>
+          </div>
+          <ProgressBar value={radio.temp} max={80} color={radio.temp > 65 ? COLORS.err : radio.temp > 55 ? COLORS.warn : COLORS.ok} height={4} />
+        </div>
+        <div className="rounded-lg border p-4" style={{ backgroundColor: BG.card, borderColor: BORDER.default }}>
+          <span className="text-[10px] font-medium uppercase tracking-wider block mb-2" style={{ color: TEXT.tertiary }}>Battery</span>
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-2xl font-bold tabular-nums leading-none" style={{ color: radio.battery <= 25 ? COLORS.err : radio.battery <= 50 ? COLORS.warn : TEXT.primary }}>{radio.battery}</span>
+            <span className="text-xs" style={{ color: TEXT.tertiary }}>%</span>
+          </div>
+          <ProgressBar value={radio.battery} color={radio.battery <= 25 ? COLORS.err : radio.battery <= 50 ? COLORS.warn : COLORS.ok} height={4} />
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex-1 min-w-0 space-y-4">
+          <Panel
+            header={
+              <PanelHeader
+                title="Link Quality"
+                subtitle={`SNR and Packet Error Rate — last ${timeRange}`}
+                right={<SegmentedControl options={TIME_RANGES} value={timeRange} onChange={setTimeRange} size="sm" />}
+              />
+            }
+          >
+            <LinkQualityChart snr={radio.snr} timeRange={timeRange} />
+          </Panel>
+
+          <Panel header={<PanelHeader title={`Mesh Neighbors (${neighbors.length})`} />} noPadding>
+            <div className="overflow-x-auto max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#2c3647 transparent' }}>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ backgroundColor: BG.elevated }}>
+                    <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Status</th>
+                    <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Neighbor</th>
+                    <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>SNR</th>
+                    <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Rx Rate</th>
+                    <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Tx Rate</th>
+                    <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Retries</th>
+                    <th className="text-left px-4 py-2.5 font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>Quality</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {neighbors.map(({ link, neighbor }) => (
+                    <tr
+                      key={link.id}
+                      className="transition-colors cursor-pointer"
+                      style={{ borderBottom: `1px solid ${BORDER.default}` }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = BG.elevated; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      onClick={() => selectRadio(neighbor!.id)}
+                    >
+                      <td className="px-4 py-2.5"><StatusDot status={neighbor!.state} size="sm" pulse={false} /></td>
+                      <td className="px-4 py-2.5 font-medium" style={{ color: TEXT.primary }}>{neighbor!.callsign}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono tabular-nums" style={{ color: TEXT.secondary }}>{link.snr} dB</span>
+                          <SignalBars snr={link.snr} size="sm" />
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 font-mono tabular-nums" style={{ color: TEXT.secondary }}>{link.rxAvg} Mbps</td>
+                      <td className="px-4 py-2.5 font-mono tabular-nums" style={{ color: TEXT.secondary }}>{link.txAvg} Mbps</td>
+                      <td className="px-4 py-2.5 font-mono tabular-nums" style={{ color: link.retries > 5 ? COLORS.warn : TEXT.secondary }}>{link.retries}</td>
+                      <td className="px-4 py-2.5"><StatusChip status={link.quality} size="sm" /></td>
+                    </tr>
+                  ))}
+                  {neighbors.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: TEXT.tertiary }}>No mesh neighbors found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </div>
+
+        <div className="w-full lg:w-[340px] flex-shrink-0 space-y-4">
+          <Panel header={<PanelHeader title="Identity" />}>
+            <div className="space-y-0.5">
+              <MetricRow label="Callsign" value={radio.callsign} valueColor={TEXT.primary} />
+              <MetricRow label="MAC Address" value={radio.mac} />
+              <MetricRow label="IPv4 Address" value={radio.ip} />
+              <MetricRow label="Form Factor" value={radio.formFactor} />
+              <MetricRow label="Firmware" value={radio.firmware} />
+              <MetricRow label="Agent" value={`v${radio.agentVersion}`} />
+              <MetricRow label="Enrolled" value={new Date(radio.enrolled).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
+              <MetricRow label="Cert Expires" value={radio.certExpiry} valueColor={new Date(radio.certExpiry) < new Date(Date.now() + 45 * 86400000) ? COLORS.warn : TEXT.secondary} />
+            </div>
+          </Panel>
+
+          <Panel header={<PanelHeader title="Configuration" />}>
+            <div className="space-y-0.5">
+              <MetricRow label="Template" value={radio.configTemplate} />
+              <MetricRow label="Channel" value="36 (5.18 GHz)" />
+              <MetricRow label="Mesh ID" value="mesh-rider-alpha" />
+              <MetricRow label="Sense Profile" value="default" />
+              <MetricRow label="Last Applied" value="2h 14m ago" />
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-xs" style={{ color: TEXT.tertiary }}>Config State</span>
+                <StatusChip status={radio.configState} label={radio.configState === 'in-sync' ? 'IN SYNC' : 'DRIFT'} size="sm" />
+              </div>
+            </div>
+          </Panel>
+
+          <LocationPanel lat={radio.lat} lng={radio.lng} siteName={radio.siteName} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Telemetry Tab ──────────────────────────────────────────────────────────
+
+const TELEMETRY_METRICS = [
+  { key: 'snr', label: 'SNR', unit: 'dB', getVal: (r: Radio) => r.snr, thresholds: { ok: 20, warn: 10 }, variance: 3, noise: 2 },
+  { key: 'throughput', label: 'Throughput', unit: 'Mbps', getVal: (r: Radio) => r.throughput, thresholds: { ok: 60, warn: 30 }, variance: 15, noise: 8 },
+  { key: 'txPower', label: 'Tx Power', unit: 'dBm', getVal: (r: Radio) => r.txPower, thresholds: { ok: 15, warn: 10 }, variance: 1.5, noise: 0.8 },
+  { key: 'rxSensitivity', label: 'Rx Sensitivity', unit: 'dBm', getVal: (r: Radio) => Math.round(-85 + detRand(r.id, 50) * 10), thresholds: { ok: -80, warn: -90 }, variance: 2, noise: 1, invertThresholds: true },
+  { key: 'channelUtil', label: 'Channel Util', unit: '%', getVal: (r: Radio) => Math.round(25 + detRand(r.id, 60) * 50), thresholds: { ok: 60, warn: 80 }, variance: 8, noise: 4 },
+  { key: 'meshHops', label: 'Mesh Hops', unit: '', getVal: (r: Radio) => Math.max(1, Math.min(6, Math.floor(1 + detRand(r.id, 70) * 5))), thresholds: { ok: 3, warn: 4 }, variance: 0.5, noise: 0.3 },
+  { key: 'packetLoss', label: 'Packet Loss', unit: '%', getVal: (r: Radio) => Math.round(detRand(r.id, 80) * 5 * 10) / 10, thresholds: { ok: 1, warn: 3 }, variance: 0.5, noise: 0.3 },
+  { key: 'latency', label: 'Latency', unit: 'ms', getVal: (r: Radio) => Math.round(2 + detRand(r.id, 90) * 18), thresholds: { ok: 8, warn: 15 }, variance: 3, noise: 2 },
+];
+
+function TelemetryTab({ radio }: { radio: Radio }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {TELEMETRY_METRICS.map((metric) => {
+          const value = metric.getVal(radio);
+          const sparkline = generateSparkline(value, metric.variance, metric.noise);
+          const isCrit = metric.invertThresholds ? value < metric.thresholds.warn : value > metric.thresholds.warn;
+          const isWarn = metric.invertThresholds ? value < metric.thresholds.ok : value > metric.thresholds.ok && value <= metric.thresholds.warn;
+          const statusColor = isCrit ? COLORS.err : isWarn ? COLORS.warn : COLORS.ok;
+          const trend = detRand(radio.id + TELEMETRY_METRICS.indexOf(metric), 100) > 0.5;
+
+          return (
+            <div
+              key={metric.key}
+              className="rounded-lg border p-4 transition-colors"
+              style={{ backgroundColor: BG.card, borderColor: BORDER.default }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = statusColor + '40'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = BORDER.default; }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>{metric.label}</span>
+                <span className="text-xs" style={{ color: trend ? COLORS.err : COLORS.ok }}>
+                  {trend ? '↑' : '↓'}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-xl font-bold tabular-nums leading-none" style={{ color: statusColor }}>
+                  {metric.unit === '' ? Math.round(value) : value}
+                </span>
+                {metric.unit && <span className="text-[10px]" style={{ color: TEXT.tertiary }}>{metric.unit}</span>}
+              </div>
+              <Sparkline data={sparkline} color={statusColor} width={120} height={28} />
+            </div>
+          );
+        })}
+      </div>
+
+      <Panel header={<PanelHeader title="24h Trend Summary" subtitle="Telemetry metrics over the last 24 hours" />}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4">
+          {TELEMETRY_METRICS.slice(0, 4).map((metric) => {
+            const value = metric.getVal(radio);
+            const isCrit = metric.invertThresholds ? value < metric.thresholds.warn : value > metric.thresholds.warn;
+            const isWarn = metric.invertThresholds ? value < metric.thresholds.ok : value > metric.thresholds.ok && value <= metric.thresholds.warn;
+            const statusColor = isCrit ? COLORS.err : isWarn ? COLORS.warn : COLORS.ok;
+            const trend = detRand(radio.id + TELEMETRY_METRICS.indexOf(metric), 200) > 0.5;
+            const pctChange = Math.round((trend ? 1 : -1) * (2 + detRand(radio.id + TELEMETRY_METRICS.indexOf(metric), 300) * 8));
+
+            return (
+              <div key={metric.key} className="text-center">
+                <span className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: TEXT.tertiary }}>{metric.label}</span>
+                <span className="text-lg font-bold font-mono" style={{ color: statusColor }}>
+                  {trend ? '+' : ''}{pctChange}%
+                </span>
+                <span className="text-[10px] block mt-0.5" style={{ color: trend ? COLORS.err : COLORS.ok }}>
+                  vs 24h ago
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+// ─── Config Tab ─────────────────────────────────────────────────────────────
+
+function ConfigTab({ radio }: { radio: Radio }) {
+  const [pushing, setPushing] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const handlePushConfig = () => {
+    setPushing(true);
+    setTimeout(() => setPushing(false), 2000);
+  };
+
+  const handleResetTemplate = () => {
+    setResetting(true);
+    setTimeout(() => setResetting(false), 2000);
+  };
+
+  const isDrift = radio.configState === 'drift';
+
+  const configFields = [
+    { label: 'Template Name', value: radio.configTemplate },
+    { label: 'Channel', value: '36 (5.18 GHz)' },
+    { label: 'Bandwidth', value: '40 MHz' },
+    { label: 'TX Power', value: `${radio.txPower} dBm` },
+    { label: 'Mesh ID', value: 'mesh-rider-alpha' },
+    { label: 'Sense Profile', value: 'default' },
+    { label: 'Encryption', value: 'AES-256-GCM' },
+    { label: 'Route Metric', value: 'ETX (Expected Transmission Count)' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Config state banner */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 rounded-lg border"
+        style={{
+          backgroundColor: isDrift ? '#ff547008' : '#3ddc9708',
+          borderColor: isDrift ? '#ff547030' : '#3ddc9730',
+        }}
+      >
+        <div className="rounded-full" style={{ width: 8, height: 8, backgroundColor: isDrift ? COLORS.err : COLORS.ok, boxShadow: `0 0 8px ${isDrift ? COLORS.err : COLORS.ok}80` }} />
+        <div>
+          <span className="text-xs font-semibold" style={{ color: isDrift ? COLORS.err : COLORS.ok }}>
+            {isDrift ? 'Config Drift Detected' : 'Config In Sync'}
+          </span>
+          <span className="text-xs ml-2" style={{ color: TEXT.secondary }}>
+            {isDrift
+              ? 'Running config differs from template. Manual override may have been applied.'
+              : 'Running configuration matches the assigned template.'}
+          </span>
+        </div>
+      </div>
+
+      {/* Configuration fields */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel header={<PanelHeader title="Current Configuration" subtitle={radio.configTemplate} />}>
+          <div className="space-y-0.5">
+            {configFields.map((field) => (
+              <MetricRow key={field.label} label={field.label} value={field.value} />
+            ))}
+            <MetricRow
+              label="Last Applied"
+              value="2h 14m ago"
+            />
+          </div>
+        </Panel>
+
+        {/* Config diff section (if drift) */}
+        {isDrift && (
+          <Panel header={<PanelHeader title="Configuration Diff" subtitle="Template vs Running" />}>
+            <div className="space-y-3">
+              {[
+                { field: 'channel_width', template: '40 MHz', running: '20 MHz' },
+                { field: 'tx_power_limit', template: '23 dBm', running: '20 dBm' },
+              ].map((diff) => (
+                <div key={diff.field} className="rounded-md p-3" style={{ backgroundColor: BG.input }}>
+                  <span className="text-[10px] font-mono block mb-1.5" style={{ color: COLORS.warn }}>{diff.field}</span>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="font-mono px-2 py-0.5 rounded" style={{ backgroundColor: '#3ddc9715', color: '#3ddc97' }}>{diff.template}</span>
+                    <span style={{ color: TEXT.muted }}>→</span>
+                    <span className="font-mono px-2 py-0.5 rounded" style={{ backgroundColor: '#ff547015', color: '#ff5470' }}>{diff.running}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-3">
+        <ActionButton
+          primary
+          label={pushing ? 'Pushing...' : 'Push Config'}
+          icon={
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22V8" /><path d="m5 12 7-7 7 7" />
+            </svg>
+          }
+        />
+        <ActionButton
+          label={resetting ? 'Resetting...' : 'Reset to Template'}
+          icon={
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" />
+            </svg>
+          }
+        />
+        {isDrift && (
+          <span className="text-[10px] font-mono px-2 py-1 rounded" style={{ color: COLORS.warn, backgroundColor: '#f4a41710', border: '1px solid #f4a41720' }}>
+            2 fields differ
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Events Tab ─────────────────────────────────────────────────────────────
+
+const ACTION_TYPE_COLORS: Record<ActionType, string> = {
+  ota: '#2dd4ff',
+  config: '#f4a417',
+  alert: '#ff5470',
+  agent: '#3ddc97',
+  access: '#aeb8c8',
+  system: '#6f7d93',
+};
+
+function EventsTab({ radio }: { radio: Radio }) {
+  const radioEvents = useMemo(() => {
+    return auditEvents.filter((ev) => ev.object.includes(radio.callsign));
+  }, [radio.callsign]);
+
+  return (
+    <div className="space-y-4">
+      <Panel header={<PanelHeader title={`Events for ${radio.callsign}`} subtitle={`${radioEvents.length} events found`} />}>
+        {radioEvents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <EmptyState
+              title="No events found"
+              description={`No audit events reference ${radio.callsign}.`}
+            />
+          </div>
+        ) : (
+          <div className="space-y-0">
+            {radioEvents.map((ev) => {
+              const chipColor = ACTION_TYPE_COLORS[ev.actionType] || '#6f7d93';
+              return (
+                <div
+                  key={ev.id}
+                  className="flex items-start gap-3 px-4 py-3 transition-colors"
+                  style={{ borderBottom: `1px solid ${BORDER.default}` }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = BG.elevated; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  {/* Timestamp */}
+                  <div className="flex-shrink-0 w-16">
+                    <span className="text-[10px] font-mono block" style={{ color: TEXT.tertiary }}>
+                      {new Date(ev.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                    </span>
+                  </div>
+
+                  {/* Action type chip */}
+                  <span
+                    className="flex-shrink-0 px-2 py-0.5 rounded text-[9px] font-mono font-medium uppercase tracking-wider"
+                    style={{ backgroundColor: chipColor + '15', color: chipColor, border: `1px solid ${chipColor}30` }}
+                  >
+                    {ev.actionType}
+                  </span>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs" style={{ color: TEXT.secondary }}>{ev.action}</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] font-mono" style={{ color: TEXT.muted }}>{ev.operator}</span>
+                      <span style={{ color: TEXT.muted }}>·</span>
+                      <span className="text-[10px] font-mono" style={{ color: TEXT.muted }}>{ev.sourceIp}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+// ─── Security Tab ───────────────────────────────────────────────────────────
+
+function SecurityTab({ radio }: { radio: Radio }) {
+  // Derive security data from radio
+  const certExpiryDate = new Date(radio.certExpiry);
+  const now = new Date();
+  const daysUntilExpiry = Math.floor((certExpiryDate.getTime() - now.getTime()) / (86400000));
+  const certStatus = daysUntilExpiry < 0 ? 'expired' : daysUntilExpiry < 30 ? 'expiring' : 'valid';
+  const certStatusColor = certStatus === 'valid' ? COLORS.ok : certStatus === 'expiring' ? COLORS.warn : COLORS.err;
+  const certStatusLabel = certStatus === 'valid' ? 'VALID' : certStatus === 'expiring' ? 'EXPIRING' : 'EXPIRED';
+
+  // Security score based on cert status, firmware, etc.
+  const score = certStatus === 'valid' ? 92 : certStatus === 'expiring' ? 78 : 55;
+  const scoreColor = score >= 85 ? COLORS.ok : score >= 70 ? COLORS.warn : COLORS.err;
+
+  // SVG circular gauge
+  const gaugeRadius = 54;
+  const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+  const gaugeOffset = gaugeCircumference - (score / 100) * gaugeCircumference;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Security Score Gauge */}
+        <Panel header={<PanelHeader title="Security Score" />}>
+          <div className="flex flex-col items-center py-4">
+            <div className="relative" style={{ width: 140, height: 140 }}>
+              <svg viewBox="0 0 120 120" className="w-full h-full">
+                {/* Background circle */}
+                <circle cx="60" cy="60" r={gaugeRadius} fill="none" stroke="#1c2430" strokeWidth="8" />
+                {/* Progress circle */}
+                <circle
+                  cx="60" cy="60" r={gaugeRadius}
+                  fill="none"
+                  stroke={scoreColor}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={gaugeCircumference}
+                  strokeDashoffset={gaugeOffset}
+                  transform="rotate(-90 60 60)"
+                  style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-3xl font-bold tabular-nums" style={{ color: scoreColor }}>{score}</span>
+                <span className="text-[10px] uppercase tracking-wider" style={{ color: TEXT.tertiary }}>of 100</span>
+              </div>
+            </div>
+            <span
+              className="mt-3 px-3 py-1 rounded-full text-[10px] font-mono font-medium uppercase tracking-wider"
+              style={{ backgroundColor: scoreColor + '15', color: scoreColor, border: `1px solid ${scoreColor}30` }}
+            >
+              {score >= 85 ? 'Secure' : score >= 70 ? 'Attention Needed' : 'At Risk'}
+            </span>
+          </div>
+        </Panel>
+
+        {/* Certificate Info */}
+        <Panel header={<PanelHeader title="Certificate" />}>
+          <div className="space-y-0.5">
+            <MetricRow label="Issuer" value="Doodle Labs Mesh CA" />
+            <MetricRow label="Serial" value={`0xA${radio.id}B${radio.id + 1}C${radio.id + 2}`} />
+            <MetricRow label="Expiry Date" value={radio.certExpiry} valueColor={certStatusColor} />
+            <MetricRow label="Status" value={certStatusLabel} valueColor={certStatusColor} />
+            <MetricRow label="SHA-256 Fingerprint" value={`A4:B2:${radio.mac.slice(0, 8)}:${radio.mac.slice(-8)}`} />
+          </div>
+        </Panel>
+
+        {/* Access & Auth */}
+        <Panel header={<PanelHeader title="Access & Authentication" />}>
+          <div className="space-y-0.5">
+            <MetricRow label="TLS Version" value="TLS 1.3" valueColor={COLORS.ok} />
+            <MetricRow label="SSH Access" value="Enabled" valueColor={COLORS.ok} />
+            <MetricRow label="SSH Port" value="22" />
+            <MetricRow label="SSH Key Auth" value="Enforced" valueColor={COLORS.ok} />
+            <MetricRow label="Password Auth" value="Disabled" valueColor={COLORS.ok} />
+            <MetricRow label="Last Login" value="Jabbir · 2h 14m ago" />
+            <MetricRow label="Failed Attempts" value="0 (24h)" valueColor={COLORS.ok} />
+          </div>
+        </Panel>
+      </div>
+
+      {/* Security findings */}
+      <Panel header={<PanelHeader title="Security Findings" />}>
+        <div className="space-y-2">
+          {[
+            { text: 'Firmware is up-to-date', status: 'ok' as const },
+            { text: 'TLS 1.3 enforced on all connections', status: 'ok' as const },
+            { text: 'SSH password authentication disabled', status: 'ok' as const },
+            { text: certStatus === 'expiring' ? `Certificate expires in ${daysUntilExpiry} days` : 'Certificate valid for ' + daysUntilExpiry + ' days', status: certStatus === 'expiring' ? 'warn' as const : 'ok' as const },
+            { text: 'No unauthorized access attempts detected', status: 'ok' as const },
+          ].map((finding, idx) => (
+            <div key={idx} className="flex items-center gap-2.5 py-1.5">
+              <div className="rounded-full flex-shrink-0" style={{
+                width: 6,
+                height: 6,
+                backgroundColor: finding.status === 'ok' ? COLORS.ok : finding.status === 'warn' ? COLORS.warn : COLORS.err,
+              }} />
+              <span className="text-xs" style={{ color: finding.status === 'warn' ? COLORS.warn : TEXT.secondary }}>{finding.text}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
   );
 }

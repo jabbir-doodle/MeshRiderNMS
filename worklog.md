@@ -260,9 +260,98 @@ Stage Summary:
 
 ### Recommended Next Phase Priorities
 1. Add dark/light theme toggle for customer flexibility
-2. Add AI Network Advisor chatbot panel (using LLM skill for intelligent responses)
+2. ✅ ~~Add AI Network Advisor chatbot panel (using LLM skill for intelligent responses)~~
 3. Implement interactive map view in topology (replace SVG with Leaflet/MapLibre)
 4. Add WebSocket real-time data feed (replace simulated data with live updates)
 5. Add Settings/Profile page for user preferences
 6. Improve mobile responsiveness and touch interactions
-7. Add data visualization charts for historical trends (throughput, SNR over time)
+7. ✅ ~~Add data visualization charts for historical trends (throughput, SNR over time)~~
+
+---
+Task ID: phase3-features
+Agent: Main
+Task: AI Advisor Panel, Notification Center, Radio Detail Tab Content
+
+Work Log:
+
+**TASK 1: AI Network Advisor Panel**
+- Created backend API route `/src/app/api/nms/ai-advisor/route.ts` — uses z-ai-web-dev-sdk LLM with fleet-specific system prompt (24 radios, 5 sites, Mesh Rider products)
+- Created frontend component `/src/components/nms/ai-advisor-panel.tsx` with:
+  - Floating action button (FAB) in bottom-right corner with amber gradient, animated pulse ring, brain/sparkle SVG icon
+  - Slide-in panel (380px wide) from the right with glassmorphism background (backdrop-filter blur)
+  - Header with "AI Network Advisor" title, "Online · Mesh Rider AI" status chip, close button
+  - 3 quick action chips: "Analyze fleet health", "Check for anomalies", "Optimize routing" — clicking auto-sends message
+  - Chat messages area (scrollable) with user messages right-aligned (amber bg) and AI messages left-aligned (dark bg) with "AI" badge
+  - Typing indicator with animated dots during API response
+  - Input field with send button at bottom, Enter key support, disabled state during loading
+  - Escape key and backdrop click close the panel
+- Integrated `AIAdvisorPanel` in `nms-layout.tsx` (independent of current view, always accessible)
+
+**TASK 2: Notification Center Dropdown**
+- Added `Notification` interface and `notifications` array (7 items) to `mock-data.ts`
+- Rewrote notification bell button in `nms-topbar.tsx` with `NotificationDropdown` component:
+  - Shows 360px dropdown panel below bell with glassmorphism background
+  - Header: "Notifications" title with unread count badge, "Mark all read" button
+  - List of 7 notifications with severity dots (critical=red, warning=amber, info=cyan), title, description, time ago
+  - Unread indicator dot on each unread notification
+  - Hover effect on each notification item
+  - Click to mark individual notification as read
+  - "View All Alerts" link at bottom navigates to Alerts view
+  - Click outside and Escape key close dropdown
+  - Unread count badge with bounce animation on bell button
+
+**TASK 3: Radio Detail Tab Content**
+- Extracted Overview tab content into `OverviewTab` sub-component (no change in appearance)
+- Created `TelemetryTab` component:
+  - Grid of 8 metric cards: SNR, Throughput, Tx Power, Rx Sensitivity, Channel Util, Mesh Hops, Packet Loss, Latency
+  - Each card shows: label, current value (color-coded: green/amber/red), unit, mini sparkline, 24h trend indicator (↑/↓)
+  - Uses `generateSparkline` and `detRand` functions for deterministic data
+  - "24h Trend Summary" panel with percentage change vs 24h ago for top 4 metrics
+- Created `ConfigTab` component:
+  - Config state banner (drift=in-sync green, drift=detected red)
+  - Current configuration panel: Template Name, Channel, Bandwidth, TX Power, Mesh ID, Sense Profile, Encryption, Route Metric, Last Applied
+  - Configuration Diff panel (shown only when drift): displays field-level diff (template value → running value)
+  - "Push Config" and "Reset to Template" action buttons with loading state simulation
+- Created `EventsTab` component:
+  - Filters audit events by radio callsign
+  - Chronological list showing: timestamp, action type chip (color-coded by type), operator, description, source IP
+  - Empty state when no events found for selected radio
+- Created `SecurityTab` component:
+  - Security Score gauge: SVG circular progress indicator with score (92/78/55 based on cert status)
+  - Certificate info panel: Issuer, Serial, Expiry Date, Status (VALID/EXPIRING/EXPIRED), SHA-256 Fingerprint
+  - Access & Authentication panel: TLS Version (1.3), SSH Access, SSH Port, SSH Key Auth, Password Auth, Last Login, Failed Attempts
+  - Security Findings panel: 5 bullet-point findings (firmware up-to-date, TLS enforced, SSH password disabled, cert status, no unauthorized attempts)
+
+**Verification:**
+- All changes pass `bun run lint` with zero errors
+- No existing functionality broken
+- All new exports used in their respective components
+- Dev server responding with 200 OK
+
+Stage Summary:
+- 3 major features implemented: AI Advisor, Notification Center, Radio Detail Tabs
+- 1 new API endpoint (ai-advisor)
+- 1 new component (ai-advisor-panel.tsx)
+- 4 new tab sub-components in radio-detail-view.tsx
+- Notification dropdown with full interactivity in topbar
+- Zero ESLint errors
+
+---
+Task ID: phase3-ui-polish
+Agent: Main
+Task: 5 enhancement tasks - System Status Bar, Topology interactivity, OTA enhancements, Fleet View styling, Global CSS polish
+
+Work Log:
+- TASK 1: Created system-status-bar.tsx - Fixed 32px bottom bar with amber left border accent, scrolling ticker of 7 real-time metrics, UTC timestamp updating every second, CSS translateX animation for continuous scrolling
+- TASK 1 Integration: Added SystemStatusBar to nms-layout.tsx as last child of flex column after main content area
+- TASK 2: Enhanced topology-view.tsx with Site Legend, Zoom Controls (+/−/Fit), Minimap with viewport rect, Node Tooltips on hover, Link quality gradient strokes, Site-colored node rings
+- TASK 3: Enhanced ota-view.tsx with Campaign Statistics Strip, horizontal visual step indicator, per-radio progress bars, Estimated Completion Time
+- TASK 4: Enhanced fleet-view.tsx with useAnimatedCounter hook, mount-animated circular progress, segment tooltips, View Full Report link. Enhanced KPICard with gradient overlay, SVG trend arrows, sparkline glow
+- TASK 5: Enhanced globals.css with .fade-in animation, ticker scroll, hidden scrollbar, row highlight, button press effect, amber focus glow, card-depth classes
+- All changes pass ESLint with zero errors
+
+Stage Summary:
+- 5 enhancement tasks completed across 6 files
+- New component: system-status-bar.tsx
+- Enhanced: topology-view, ota-view, fleet-view, nms-utils, globals.css, nms-layout
+- Zero ESLint errors

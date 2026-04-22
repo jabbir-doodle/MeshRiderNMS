@@ -251,10 +251,46 @@ function DataExportModal({ open, onClose }: ExportModalProps) {
   );
 }
 
+// ─── Animated Counter Hook ───────────────────────────────────────────────────
+
+function useAnimatedCounter(target: number, duration: number = 1200): number {
+  const [display, setDisplay] = useState(0);
+  const prevTarget = React.useRef(target);
+  const startTime = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (prevTarget.current === target) return;
+    prevTarget.current = target;
+    startTime.current = null;
+
+    const animate = (timestamp: number) => {
+      if (!startTime.current) startTime.current = timestamp;
+      const elapsed = timestamp - startTime.current;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * target));
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+  }, [target, duration]);
+
+  return display;
+}
+
 // ─── Network Health Score Panel ─────────────────────────────────────────────
 
 function NetworkHealthScore() {
   const { tick, fluctuate } = useRealtimeSimulation();
+  const [mounted, setMounted] = useState(false);
+  const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const segments = [
     { label: 'Mesh Connectivity', value: fluctuate(95, 2), color: COLORS.ok },
@@ -269,16 +305,24 @@ function NetworkHealthScore() {
 
   const scoreColor = overallScore > 90 ? COLORS.ok : overallScore > 70 ? COLORS.amber : COLORS.err;
 
-  // SVG circular progress
+  // Animated counting
+  const displayScore = useAnimatedCounter(mounted ? overallScore : 0);
+
+  // SVG circular progress with mount animation
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
-  const progress = (overallScore / 100) * circumference;
-  const offset = circumference - progress;
+  const targetProgress = (overallScore / 100) * circumference;
+  const animatedProgress = mounted ? targetProgress : circumference; // starts empty
+  const offset = circumference - animatedProgress;
 
   return (
     <div
       className="rounded-lg border overflow-hidden hover-lift"
-      style={{ backgroundColor: BG.card, borderColor: BORDER.default }}
+      style={{
+        backgroundColor: BG.card,
+        borderColor: BORDER.default,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+      }}
     >
       <PanelHeader
         title="Network Health Score"
@@ -309,7 +353,7 @@ function NetworkHealthScore() {
               stroke="#222b39"
               strokeWidth="8"
             />
-            {/* Progress circle */}
+            {/* Progress circle with mount animation */}
             <circle
               cx="70"
               cy="70"
@@ -322,7 +366,7 @@ function NetworkHealthScore() {
               strokeDashoffset={offset}
               transform="rotate(-90 70 70)"
               style={{
-                transition: 'stroke-dashoffset 1s ease, stroke 0.5s ease',
+                transition: mounted ? 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s ease' : 'none',
                 filter: `drop-shadow(0 0 6px ${scoreColor}44)`,
               }}
             />
@@ -336,13 +380,13 @@ function NetworkHealthScore() {
               strokeWidth="1"
             />
           </svg>
-          {/* Score text centered */}
+          {/* Score text centered with animated counter */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span
               className="text-3xl font-bold tabular-nums leading-none animate-score-pulse"
               style={{ color: scoreColor }}
             >
-              {overallScore}
+              {displayScore}
             </span>
             <span className="text-[10px] font-medium mt-1" style={{ color: TEXT.tertiary }}>
               out of 100
@@ -350,10 +394,15 @@ function NetworkHealthScore() {
           </div>
         </div>
 
-        {/* Segment Bars */}
+        {/* Segment Bars with tooltips */}
         <div className="flex-1 w-full space-y-3.5">
           {segments.map((seg) => (
-            <div key={seg.label}>
+            <div
+              key={seg.label}
+              className="relative"
+              onMouseEnter={() => setHoveredSegment(seg.label)}
+              onMouseLeave={() => setHoveredSegment(null)}
+            >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium" style={{ color: TEXT.secondary }}>
                   {seg.label}
@@ -366,21 +415,51 @@ function NetworkHealthScore() {
                 </span>
               </div>
               <div
-                className="w-full rounded-full overflow-hidden"
+                className="w-full rounded-full overflow-hidden cursor-default"
                 style={{ height: 5, backgroundColor: '#222b39' }}
               >
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{
-                    width: `${seg.value}%`,
+                    width: mounted ? `${seg.value}%` : '0%',
                     backgroundColor: seg.color,
                     minWidth: seg.value > 0 ? 2 : 0,
                     boxShadow: `0 0 8px ${seg.color}44`,
+                    transition: mounted ? 'width 1s cubic-bezier(0.4, 0, 0.2, 1) 0.3s' : 'none',
                   }}
                 />
               </div>
+              {/* Segment tooltip on hover */}
+              {hoveredSegment === seg.label && (
+                <div
+                  className="absolute -top-8 left-1/2 -translate-x-1/2 z-10 px-2 py-1 rounded text-[10px] font-mono whitespace-nowrap"
+                  style={{
+                    backgroundColor: BG.elevated,
+                    border: `1px solid ${seg.color}40`,
+                    color: seg.color,
+                    boxShadow: `0 4px 12px rgba(0,0,0,0.3)`,
+                  }}
+                >
+                  {seg.label}: {Math.round(seg.value)}/100
+                </div>
+              )}
             </div>
           ))}
+
+          {/* View Full Report link */}
+          <div className="pt-2">
+            <button
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium transition-all active:scale-[0.97]"
+              style={{ color: COLORS.amber, backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#ffc44d'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = COLORS.amber; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              View Full Report
+            </button>
+          </div>
         </div>
       </div>
     </div>

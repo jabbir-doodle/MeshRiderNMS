@@ -309,49 +309,85 @@ export function KPICard({
   icon,
   className,
 }: KPICardProps) {
+  const [hovered, setHovered] = React.useState(false);
+  const deltaColor = delta !== undefined ? (delta >= 0 ? COLORS.ok : COLORS.err) : undefined;
+  const glowColor = sparklineColor ?? COLORS.cyan;
+
   return (
     <div
       className={cn(
-        'rounded-lg border p-4 transition-colors',
+        'rounded-lg border p-4 transition-all duration-200 cursor-default group relative overflow-hidden',
         className
       )}
       style={{
         backgroundColor: BG.card,
         borderColor: BORDER.default,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+      }}
+      onMouseEnter={(e) => {
+        setHovered(true);
+        e.currentTarget.style.borderColor = BORDER.hover;
+        e.currentTarget.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.02), 0 4px 16px rgba(0,0,0,0.2)`;
+      }}
+      onMouseLeave={(e) => {
+        setHovered(false);
+        e.currentTarget.style.borderColor = BORDER.default;
+        e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.02)';
       }}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="text-xs font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>
-          {label}
-        </span>
-        {icon && <span style={{ color: COLORS.amber }}>{icon}</span>}
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-2xl font-bold tabular-nums leading-none" style={{ color: TEXT.primary }}>
-          {value}
-        </span>
-        {unit && <span className="text-xs" style={{ color: TEXT.tertiary }}>{unit}</span>}
-      </div>
-      {(delta !== undefined || sparkline) && (
-        <div className="flex items-center justify-between mt-2">
-          {delta !== undefined && (
-            <span
-              className="text-xs tabular-nums"
-              style={{ color: delta >= 0 ? COLORS.ok : COLORS.err }}
-            >
-              {delta >= 0 ? '↑' : '↓'} {Math.abs(delta)}{deltaLabel ?? '%'}
-            </span>
-          )}
-          {sparkline && sparkline.length >= 2 && (
-            <Sparkline
-              data={sparkline}
-              width={60}
-              height={20}
-              color={sparklineColor ?? COLORS.cyan}
-            />
-          )}
+      {/* Subtle gradient overlay on hover */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+        style={{
+          opacity: hovered ? 0.06 : 0,
+          background: `linear-gradient(135deg, ${glowColor} 0%, transparent 60%)`,
+        }}
+      />
+
+      <div className="relative">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <span className="text-xs font-medium uppercase tracking-wider" style={{ color: TEXT.tertiary }}>
+            {label}
+          </span>
+          {icon && <span style={{ color: COLORS.amber }}>{icon}</span>}
         </div>
-      )}
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-bold tabular-nums leading-none" style={{ color: TEXT.primary }}>
+            {value}
+          </span>
+          {unit && <span className="text-xs" style={{ color: TEXT.tertiary }}>{unit}</span>}
+        </div>
+        {(delta !== undefined || sparkline) && (
+          <div className="flex items-center justify-between mt-2">
+            {delta !== undefined && (
+              <span className="inline-flex items-center gap-0.5 text-xs tabular-nums" style={{ color: deltaColor }}>
+                {/* Trend arrow */}
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  {delta >= 0 ? (
+                    <path d="M5 1.5L8.5 5L5 8.5" stroke={deltaColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  ) : (
+                    <path d="M5 8.5L1.5 5L5 1.5" stroke={deltaColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  )}
+                </svg>
+                {Math.abs(delta)}{deltaLabel ?? '%'}
+              </span>
+            )}
+            {sparkline && sparkline.length >= 2 && (
+              <div style={{
+                filter: hovered ? `drop-shadow(0 0 4px ${glowColor}66)` : 'none',
+                transition: 'filter 0.3s ease',
+              }}>
+                <Sparkline
+                  data={sparkline}
+                  width={60}
+                  height={20}
+                  color={sparklineColor ?? COLORS.cyan}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
